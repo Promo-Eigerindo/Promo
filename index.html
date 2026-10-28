@@ -235,19 +235,32 @@ var LS = { get: function (k) { try { return localStorage.getItem(k) || ''; } cat
 var App = { token: '', site: null, data: null, online: [], month: '', cat: '', q: '', today: todayISO() };
 
 /* ---------------------------------------------------------- API ---- */
+
+function fetchT(url, init, ms) {
+  var ctl = typeof AbortController !== 'undefined' ? new AbortController() : null, tm = ctl ? setTimeout(function () { ctl.abort(); }, ms) : 0;
+  return fetch(url, Object.assign({}, init, ctl ? { signal: ctl.signal } : {})).then(function (r) { if (tm) clearTimeout(tm); return r; }, function (e) {
+    if (tm) clearTimeout(tm);
+    if (e && e.name === 'AbortError') throw Object.assign(new Error('Server tidak menjawab dalam ' + Math.round(ms / 1000) + ' detik. Cek URL di config.js dan pengaturan deploy (akses harus "Anyone").'), { code: 'timeout' });
+    throw Object.assign(new Error('Tidak bisa terhubung ke server. Biasanya URL di config.js salah, atau deploy Web App belum diset "Anyone". Buka URL /exec di tab baru untuk memeriksanya.'), { code: 'network' });
+  });
+}
+function readJson(r) {
+  return r.text().then(function (t) {
+    try { return JSON.parse(t); } catch (e) {
+      throw Object.assign(new Error('Jawaban server bukan data yang valid. Biasanya deploy belum diperbarui ke versi terbaru, atau aksesnya bukan "Anyone".'), { code: 'server' });
+    }
+  });
+}
 function api(a, extra) {
   var u = new URL(CFG.API);
   u.searchParams.set('a', a);
   if (App.token) u.searchParams.set('t', App.token);
   Object.keys(extra || {}).forEach(function (k) { u.searchParams.set(k, extra[k]); });
-  return fetch(u.toString(), { redirect: 'follow' })
-    .then(function (r) { return r.json(); })
+  return fetchT(u.toString(), { redirect: 'follow' }, 45000).then(readJson)
     .then(function (j) { if (j && j.error) throw Object.assign(new Error(j.message || j.error), { code: j.error }); return j; });
 }
 function post(body) {
-  return fetch(CFG.API, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(Object.assign({ t: App.token }, body)) })
-    .then(function (r) { return r.json(); })
+  return fetchT(CFG.API, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({ t: App.token }, body)) }, 60000).then(readJson)
     .then(function (j) { if (j && j.error) throw Object.assign(new Error(j.message || j.error), { code: j.error }); return j; });
 }
 
@@ -553,7 +566,7 @@ document.addEventListener('input', function (e) {
 /* ----------------------------------------------------------- mulai -- */
 (function init() {
   document.title = (CFG.BRAND || 'Promo Eigerindo');
-  if (!/^https:\/\/script\.google(usercontent)?\.com\//.test(CFG.API || '')) {
+  if ((!/^https:\/\/script\.google(usercontent)?\.com\//.test(CFG.API || '') || /GANTI_DENGAN/.test(CFG.API))) {
     hideGate();
     $('#view').innerHTML = '<div class="wrap"><div class="empty" style="margin-top:40px">Belum tersambung ke database.<br>Isi <b>API</b> di <code>config.js</code> dengan URL Web App Apps Script.</div></div>';
     return;
