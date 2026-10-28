@@ -98,7 +98,7 @@ body.locked>*:not(.gate):not(#toast){display:none!important}
     <div class="err" id="aErr"></div>
     <button type="button" class="btn sm" id="aTest" style="margin-top:6px">Tes koneksi server</button>
     <div class="small muted" id="aTestOut" style="margin-top:8px;line-height:1.5"></div>
-    <div class="small muted" style="margin-top:10px">Versi halaman: 3</div>
+    <div class="small muted" style="margin-top:10px">Versi halaman: 4</div>
   </form>
 </div>
 
@@ -295,19 +295,139 @@ function viewPromo() {
 }
 
 /* ----------------------------------------------------- tab: daftar toko */
+function normH(v) { return String(v == null ? '' : v).toLowerCase().replace(/[^a-z0-9]/g, ''); }
+/* membaca tabel (array of array) → daftar toko. Kolom dicari dari nama judulnya, urutan bebas. */
+function mapSiteRows(aoa) {
+  var want = { code: ['site', 'nosite', 'kodesite', 'sitecode', 'kodetoko', 'kode'],
+               name: ['namastore', 'namatoko', 'storename', 'sitename', 'nama'],
+               branch: ['branch', 'area', 'cabang'], regional: ['regional', 'region', 'reg'] };
+  var hi = -1, C = {}, i, j;
+  for (i = 0; i < Math.min(aoa.length, 20); i++) {
+    var h = (aoa[i] || []).map(normH), c = {};
+    Object.keys(want).forEach(function (k) { for (j = 0; j < h.length; j++) if (want[k].indexOf(h[j]) >= 0) { c[k] = j; break; } });
+    if (c.code != null && c.name != null) { hi = i; C = c; break; }
+  }
+  if (hi < 0) return null;
+  var rows = [], bad = 0, dup = 0, seen = {};
+  var tx = function (v) { return String(v == null ? '' : v).replace(/\s+/g, ' ').trim(); };
+  for (i = hi + 1; i < aoa.length; i++) {
+    var r = aoa[i] || [], raw = r[C.code];
+    if (raw === '' || raw == null) { if (r.some(function (x) { return tx(x); })) bad++; continue; }
+    var code = typeof raw === 'number' ? String(Math.round(raw)) : tx(raw).replace(/\.0+$/, '');
+    if (!/^[0-9A-Za-z]{3,8}$/.test(code)) { bad++; continue; }
+    if (seen[code]) { dup++; continue; }
+    seen[code] = 1;
+    rows.push({ code: code, name: tx(r[C.name]), branch: C.branch != null ? tx(r[C.branch]) : '', regional: C.regional != null ? tx(r[C.regional]) : '' });
+  }
+  return { rows: rows, bad: bad, dup: dup };
+}
+var _xl = null;
+function needXLSX() {
+  if (window.XLSX) return Promise.resolve(true);
+  return _xl || (_xl = new Promise(function (res) {
+    var s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = function () { res(true); }; s.onerror = function () { _xl = null; res(false); }; document.head.appendChild(s);
+  }));
+}
+async function readSiteFile(f) {
+  var st = $('#siteStat'); if (st) st.innerHTML = '<span class="spin"></span>Membaca ' + esc(f.name) + '…';
+  try {
+    if (!(await needXLSX())) throw new Error('Pembaca Excel gagal dimuat. Cek koneksi internet.');
+    var wb = window.XLSX.read(await f.arrayBuffer(), { type: 'array' }), res = null, sheet = '';
+    for (var i = 0; i < wb.SheetNames.length && !res; i++) {
+      var aoa = window.XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[i]], { header: 1, raw: true, defval: '', blankrows: false });
+      var m = mapSiteRows(aoa); if (m && m.rows.length) { res = m; sheet = wb.SheetNames[i]; }
+    }
+    if (!res) throw new Error('Kolom SITE dan NAMA STORE tidak ditemukan. Gunakan template yang disediakan.');
+    A.siteImp = { file: f.name, sheet: sheet, rows: res.rows, bad: res.bad, dup: res.dup };
+    render();
+  } catch (e) { if (st) st.innerHTML = '<span style="color:var(--bad)">' + esc(e.message || String(e)) + '</span>'; }
+}
+async function dlToko(withData) {
+  if (!(await needXLSX())) { toast('Pembaca Excel gagal dimuat.'); return; }
+  var X = window.XLSX;
+  var body = withData ? A.sites.map(function (s) { return [String(s.code), s.name, s.area, s.regional]; })
+    : [['2054', 'EIGER Store Contoh Satu', 'DKI 01', 'REG 01'], ['2067', 'EIGER Store Contoh Dua', 'DKI 01', 'REG 01']];
+  var ws = X.utils.aoa_to_sheet([['SITE', 'NAMA STORE', 'BRANCH', 'REGIONAL']].concat(body));
+  ws['!cols'] = [{ wch: 10 }, { wch: 46 }, { wch: 14 }, { wch: 12 }];
+  var help = X.utils.aoa_to_sheet([['Petunjuk pengisian'],
+    ['1. Isi satu baris per toko di sheet "Daftar Toko": SITE, NAMA STORE, BRANCH, REGIONAL.'],
+    ['2. SITE adalah No Site toko (3–8 karakter). Inilah yang diketik toko untuk masuk.'],
+    ['3. Hapus dua baris contoh sebelum mengunggah.'],
+    ['4. Urutan kolom bebas selama judul kolomnya sama. Baris di bawah judul yang kosong dilewati.'],
+    ['5. Unggah di halaman admin, tab Daftar toko. Pilih "Tambahkan / perbarui" untuk menambah toko baru, atau "Ganti seluruh daftar" bila ingin daftar lama dihapus.']]);
+  help['!cols'] = [{ wch: 110 }];
+  var wb = X.utils.book_new(); X.utils.book_append_sheet(wb, ws, 'Daftar Toko'); X.utils.book_append_sheet(wb, help, 'Petunjuk');
+  X.writeFile(wb, withData ? 'Daftar_Toko_Saat_Ini.xlsx' : 'Template_Daftar_Toko.xlsx');
+}
+function applySiteImport(replace) {
+  var I = A.siteImp; if (!I) return;
+  if (replace && !confirm('Ganti SELURUH daftar toko dengan ' + I.rows.length + ' toko dari file ini?\nToko yang tidak ada di file akan tidak bisa masuk lagi.')) return;
+  toast('Menyimpan ' + I.rows.length + ' toko…', 8000);
+  post({ a: 'siteSave', rows: I.rows, mode: replace ? 'replace' : 'merge' }).then(function (r) {
+    A.siteImp = null; A.sites = r.sites; render();
+    toast(replace ? 'Daftar diganti: ' + r.sites.length + ' toko.' : 'Selesai. Baru ' + r.added + ', diperbarui ' + r.updated + '. Total ' + r.sites.length + ' toko.', 6000);
+  }).catch(function (er) { toast('Gagal menyimpan: ' + (er.message || er.code), 6000); });
+}
+function countBy(rows, key) { var m = {}; rows.forEach(function (r) { var k = r[key] || '(kosong)'; m[k] = (m[k] || 0) + 1; }); return m; }
 function viewToko() {
-  return '<div class="card"><h2>Daftar No Site toko</h2>'
-    + '<p class="lead">Hanya No Site yang ada di daftar ini yang bisa membuka halaman promo. Tempel daftar dari Excel: satu baris per toko, format <code>NoSite;Nama Toko;Area</code> (boleh dipisah tab atau koma).</p>'
-    + '<textarea class="inp" id="siteText" rows="7" placeholder="2278;EIGER Adventure Store Jogja;Jateng 01&#10;2279;EIGER Solo Paragon;Jateng 01"></textarea>'
-    + '<div class="row-act"><button class="btn primary" data-act="siteMerge">Tambahkan / perbarui</button>'
-    + '<button class="btn warn" data-act="siteReplace">Ganti seluruh daftar</button>'
-    + '<span class="small muted">' + A.sites.length + ' toko terdaftar</span></div></div>'
-    + '<div class="card"><h2>Toko terdaftar</h2><div class="tbl-wrap"><table class="tbl"><thead><tr><th>No Site</th><th>Nama toko</th><th>Area</th><th></th></tr></thead><tbody>'
+  var I = A.siteImp, regs = {}, brs = {};
+  A.sites.forEach(function (s) { if (s.regional) regs[s.regional] = 1; });
+  var regList = Object.keys(regs).sort();
+  var drop = '<label class="drop" id="dropSite"><input type="file" id="siteFile" accept=".xlsx,.xls,.csv"><b>Pilih file Excel daftar toko</b>'
+    + '<span class="small muted">atau seret ke sini · kolom: SITE, NAMA STORE, BRANCH, REGIONAL</span></label>'
+    + '<div id="siteStat" class="small muted" style="margin-top:10px"></div>'
+    + '<div class="row-act"><button class="btn" data-act="tplToko">Unduh template</button>'
+    + (A.sites.length ? '<button class="btn" data-act="dlToko">Unduh daftar saat ini</button>' : '') + '</div>';
+  var prev = '';
+  if (I) {
+    var cr = countBy(I.rows, 'regional'), cb = countBy(I.rows, 'branch');
+    var existing = {}; A.sites.forEach(function (s) { existing[String(s.code)] = 1; });
+    var nw = I.rows.filter(function (r) { return !existing[r.code]; }).length;
+    prev = '<div class="card" style="border-left:5px solid var(--orange)"><h2>Periksa dulu sebelum disimpan</h2>'
+      + '<p class="lead">' + esc(I.file) + (I.sheet ? ' · sheet “' + esc(I.sheet) + '”' : '') + '</p>'
+      + '<div class="g2" style="margin-bottom:6px"><div class="fs" style="margin:0"><h4>' + I.rows.length + ' toko terbaca</h4>'
+        + '<div class="small">' + nw + ' toko baru · ' + (I.rows.length - nw) + ' sudah terdaftar</div>'
+        + (I.dup ? '<div class="small" style="color:var(--orange-deep)">' + I.dup + ' baris kembar dilewati</div>' : '')
+        + (I.bad ? '<div class="small" style="color:var(--bad)">' + I.bad + ' baris tidak valid dilewati (No Site kosong atau bukan 3–8 huruf/angka)</div>' : '') + '</div>'
+        + '<div class="fs" style="margin:0"><h4>Per regional</h4><div class="small">'
+          + Object.keys(cr).sort().map(function (k) { return esc(k) + ': <b>' + cr[k] + '</b>'; }).join(' · ') + '</div>'
+          + '<div class="small muted" style="margin-top:4px">' + Object.keys(cb).length + ' branch</div></div></div>'
+      + '<div class="tbl-wrap" style="max-height:260px;margin-top:10px"><table class="tbl"><thead><tr><th>No Site</th><th>Nama toko</th><th>Branch</th><th>Regional</th></tr></thead><tbody>'
+      + I.rows.slice(0, 8).map(function (r) { return '<tr><td><b>' + esc(r.code) + '</b></td><td>' + esc(r.name) + '</td><td>' + esc(r.branch) + '</td><td>' + esc(r.regional) + '</td></tr>'; }).join('')
+      + (I.rows.length > 8 ? '<tr><td colspan="4" class="small muted">… dan ' + (I.rows.length - 8) + ' toko lainnya</td></tr>' : '') + '</tbody></table></div>'
+      + '<div class="row-act"><button class="btn primary" data-act="impMerge">Tambahkan / perbarui</button>'
+      + '<button class="btn warn" data-act="impReplace">Ganti seluruh daftar</button>'
+      + '<button class="btn" data-act="impCancel">Batalkan</button></div></div>';
+  }
+  var table = '<div class="card"><h2>Toko terdaftar (' + A.sites.length + ')</h2>'
+    + '<div class="row-act" style="margin:0 0 10px"><input class="inp" id="siteQ" type="search" placeholder="Cari No Site, nama, atau branch…" style="flex:1 1 220px;width:auto">'
+    + '<select class="inp" id="siteReg" style="width:auto"><option value="">Semua regional</option>' + regList.map(function (r) { return '<option>' + esc(r) + '</option>'; }).join('') + '</select>'
+    + '<span class="small muted" id="siteCnt"></span></div>'
+    + '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>No Site</th><th>Nama toko</th><th>Branch</th><th>Regional</th><th></th></tr></thead><tbody id="siteBody">'
     + (A.sites.map(function (s) {
-        return '<tr><td><b>' + esc(s.code) + '</b></td><td>' + esc(s.name) + '</td><td class="small muted">' + esc(s.area) + '</td>'
+        return '<tr data-s="' + esc((s.code + ' ' + s.name + ' ' + s.area + ' ' + s.regional).toLowerCase()) + '" data-r="' + esc(s.regional) + '"><td><b>' + esc(s.code) + '</b></td><td>' + esc(s.name)
+          + '</td><td class="small">' + esc(s.area) + '</td><td class="small">' + esc(s.regional) + '</td>'
           + '<td><button class="btn sm danger" data-sdel="' + esc(s.code) + '">Hapus</button></td></tr>';
-      }).join('') || '<tr><td colspan="4" class="muted" style="text-align:center;padding:22px">Belum ada toko. Tempel daftarnya di atas.</td></tr>')
+      }).join('') || '<tr><td colspan="5" class="muted" style="text-align:center;padding:22px">Belum ada toko. Unggah file Excel di atas.</td></tr>')
     + '</tbody></table></div></div>';
+  var paste = '<details class="card"><summary style="cursor:pointer;font-weight:700">Atau tempel manual</summary>'
+    + '<p class="lead" style="margin-top:8px">Satu baris per toko: <code>NoSite;Nama Toko;Branch;Regional</code> (boleh dipisah tab atau koma, jadi bisa langsung salin dari Excel).</p>'
+    + '<textarea class="inp" id="siteText" rows="5" placeholder="2054;EIGER Flagship Store Radio Dalam KYB;DKI 01;REG 01"></textarea>'
+    + '<div class="row-act"><button class="btn primary" data-act="siteMerge">Tambahkan / perbarui</button><button class="btn warn" data-act="siteReplace">Ganti seluruh daftar</button></div></details>';
+  return '<div class="card"><h2>Daftar No Site toko</h2>'
+    + '<p class="lead">Hanya No Site di daftar ini yang bisa membuka halaman promo. Unduh template, isi, lalu unggah kembali.</p>' + drop + '</div>'
+    + prev + table + paste;
+}
+function filterSites() {
+  var q = ($('#siteQ') || {}).value || '', r = ($('#siteReg') || {}).value || '', n = 0, tot = 0;
+  q = q.trim().toLowerCase();
+  $$('#siteBody tr[data-s]').forEach(function (tr) {
+    tot++;
+    var ok = (!q || tr.dataset.s.indexOf(q) >= 0) && (!r || tr.dataset.r === r);
+    tr.style.display = ok ? '' : 'none'; if (ok) n++;
+  });
+  var c = $('#siteCnt'); if (c) c.textContent = (q || r) ? n + ' dari ' + tot + ' toko' : '';
 }
 
 /* ------------------------------------------------------- tab: aktivitas */
@@ -559,11 +679,26 @@ document.addEventListener('click', function (e) {
       .then(function (r) { A.sites = r.sites; render(); toast('Daftar toko tersimpan: ' + r.sites.length + ' toko.'); })
       .catch(function (er) { toast('Gagal: ' + er.message); });
   }
+  else if (k === 'tplToko') dlToko(false);
+  else if (k === 'dlToko') dlToko(true);
+  else if (k === 'impMerge') applySiteImport(false);
+  else if (k === 'impReplace') applySiteImport(true);
+  else if (k === 'impCancel') { A.siteImp = null; render(); }
   else if (k === 'refreshOnline') { api('sites').then(function (s) { A.sites = s.sites; A.online = s.online; render(); loadLog(); }); }
 });
 document.addEventListener('change', function (e) {
   if (e.target.id === 'file' && e.target.files[0]) { handleFile(e.target.files[0]); e.target.value = ''; }
   if (e.target.id === 'pmSel') { A.pm = e.target.value; render(); }
+  if (e.target.id === 'siteFile' && e.target.files[0]) { readSiteFile(e.target.files[0]); e.target.value = ''; }
+  if (e.target.id === 'siteReg') filterSites();
+});
+document.addEventListener('input', function (e) { if (e.target.id === 'siteQ') filterSites(); });
+document.addEventListener('dragover', function (e) { var d = e.target.closest && e.target.closest('#dropSite'); if (d) { e.preventDefault(); d.classList.add('over'); } });
+document.addEventListener('dragleave', function (e) { var d = e.target.closest && e.target.closest('#dropSite'); if (d) d.classList.remove('over'); });
+document.addEventListener('drop', function (e) {
+  var d = e.target.closest && e.target.closest('#dropSite'); if (!d) return;
+  e.preventDefault(); d.classList.remove('over');
+  if (e.dataTransfer.files[0]) readSiteFile(e.dataTransfer.files[0]);
 });
 document.addEventListener('dragover', function (e) { var d = e.target.closest && e.target.closest('#drop'); if (d) { e.preventDefault(); d.classList.add('over'); } });
 document.addEventListener('dragleave', function (e) { var d = e.target.closest && e.target.closest('#drop'); if (d) d.classList.remove('over'); });
