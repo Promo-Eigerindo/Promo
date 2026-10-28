@@ -15,6 +15,7 @@
   --font:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;box-sizing:border-box;color-scheme:light only;
   padding-top:env(safe-area-inset-top,0);padding-bottom:env(safe-area-inset-bottom,0)}
 *,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14.5px;line-height:1.5}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
@@ -97,7 +98,7 @@ body.locked>*:not(.gate):not(#toast){display:none!important}
     <div class="err" id="aErr"></div>
     <button type="button" class="btn sm" id="aTest" style="margin-top:6px">Tes koneksi server</button>
     <div class="small muted" id="aTestOut" style="margin-top:8px;line-height:1.5"></div>
-    <div class="small muted" style="margin-top:10px">Versi halaman: 2</div>
+    <div class="small muted" style="margin-top:10px">Versi halaman: 3</div>
   </form>
 </div>
 
@@ -190,7 +191,7 @@ function login() {
   b.disabled = true; b.textContent = 'Memeriksa…';
   post({ a: 'adminLogin', pw: pw, name: nm }).then(function (r) {
     A.token = r.token; A.me = r.site; LS.set('promo_admin', r.token); LS.set('promo_adminName', nm);
-    document.body.classList.remove('locked'); $('#gate').hidden = true; boot();
+    document.body.classList.remove('locked'); $('#gate').hidden = true; b.disabled = false; b.textContent = 'Masuk'; boot();
   }).catch(function (e) { b.disabled = false; b.textContent = 'Masuk'; $('#aErr').textContent = e.message || 'Gagal.'; });
 }
 function logout() { post({ a: 'logout' }).catch(function () {}); A.token = ''; LS.set('promo_admin', ''); gate('Kamu sudah keluar.'); }
