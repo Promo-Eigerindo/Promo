@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Admin · Promo Eigerindo</title>
+<meta name="theme-color" content="#0B1B4A">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0F3192;--navy-deep:#0A2470;--navy-ink:#0B1B4A;--navy-tint:#EEF2FB;--orange:#E46636;--orange-deep:#C9531F;--orange-tint:#FDF0EA;
+  --ink:#16213D;--muted:#5A6482;--bg:#F3F5FA;--surface:#fff;--line:#E1E6F0;--line-2:#C8D0E0;--ok:#13806F;--ok-bg:#E3F4F0;--bad:#C0392B;--bad-bg:#FDECEB;
+  --font:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;box-sizing:border-box;color-scheme:light only;
+  padding-top:env(safe-area-inset-top,0);padding-bottom:env(safe-area-inset-bottom,0)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14.5px;line-height:1.5}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--orange);outline-offset:2px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+.muted{color:var(--muted)}.small{font-size:12.5px}
+.bar{background:var(--navy-ink);color:#fff;position:sticky;top:0;z-index:40}
+.bar .row{display:flex;gap:12px;align-items:center;padding:11px 0;flex-wrap:wrap}
+.bar b{font-size:15px}.bar .sub{font-size:12px;color:#9FB0E3}
+.tabs{display:flex;gap:3px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{flex:none;border:0;background:rgba(255,255,255,.1);color:#C9D3F0;border-radius:8px;padding:7px 14px;font-weight:700;font-size:13px}
+.tabs button.on{background:#fff;color:var(--navy)}
+main{padding:22px 0 60px}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:16px}
+.card h2{margin:0 0 4px;font-size:17px;font-weight:800;letter-spacing:-.015em}
+.card>p.lead{margin:0 0 14px;font-size:13px;color:var(--muted)}
+.inp{background:#fff;border:1px solid var(--line-2);border-radius:9px;padding:8px 11px;min-height:38px;font-size:13.5px;width:100%}
+.inp:focus{outline:none;border-color:var(--navy);box-shadow:0 0 0 3px var(--navy-tint)}
+textarea.inp{min-height:76px;resize:vertical}
+label.fl{display:block;font-weight:700;font-size:12.5px;margin-bottom:10px}
+label.fl .inp{margin-top:4px}
+.g2{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0 14px}
+.btn{border:1px solid var(--line-2);background:#fff;color:var(--navy);border-radius:9px;padding:9px 16px;font-weight:700;font-size:13.5px;min-height:40px}
+.btn.primary{background:var(--navy);border-color:var(--navy);color:#fff}
+.btn.primary:hover{background:var(--navy-deep)}
+.btn.warn{background:var(--orange);border-color:var(--orange);color:#fff}
+.btn.danger{color:var(--bad)}.btn.danger:hover{background:var(--bad-bg);border-color:var(--bad)}
+.btn.sm{padding:5px 11px;min-height:32px;font-size:12.5px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.row-act{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:12px}
+.drop{position:relative;display:grid;place-items:center;gap:4px;border:2px dashed var(--line-2);border-radius:14px;padding:30px 18px;text-align:center;cursor:pointer;background:#fff}
+.drop:hover,.drop.over{border-color:var(--orange);background:var(--orange-tint)}
+.drop b{font-size:15px}
+.drop input{position:absolute;width:1px;height:1px;opacity:0}
+.note{background:var(--navy-tint);border:1px solid var(--line-2);border-left:4px solid var(--orange);border-radius:9px;padding:10px 14px;font-size:13px;margin-bottom:14px}
+.note.bad{background:var(--bad-bg);border-left-color:var(--bad)}
+.plist{display:flex;flex-direction:column;gap:9px}
+.pi{display:flex;gap:12px;align-items:flex-start;background:#fff;border:1px solid var(--line);border-left:5px solid var(--c);border-radius:12px;padding:11px 14px}
+.pi .m{flex:1;min-width:0}
+.pi b{font-size:14.5px;display:block}
+.pi .meta{font-size:12.5px;color:var(--muted)}
+.pi .act{display:flex;gap:6px;flex-wrap:wrap;flex:none}
+.cat{display:inline-block;font-size:10.5px;font-weight:800;color:#fff;background:var(--c);border-radius:5px;padding:1px 7px;margin-right:6px;vertical-align:1px}
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px;background:#fff}
+.tbl th{background:var(--navy-tint);color:var(--navy);text-align:left;font-size:12px;padding:9px 11px;border-bottom:2px solid var(--navy);white-space:nowrap}
+.tbl td{padding:8px 11px;border-top:1px solid var(--line);vertical-align:middle}
+.tbl-wrap{overflow:auto;max-height:62vh;border:1px solid var(--line);border-radius:12px}
+.rep{display:flex;flex-direction:column;gap:7px;margin-bottom:8px}
+.rep .r{display:flex;gap:6px;align-items:flex-start}
+.rep .r .inp{flex:1}
+.ov{position:fixed;inset:0;background:rgba(11,27,74,.45);z-index:60;display:flex;justify-content:flex-end}
+.drawer{background:var(--bg);width:min(760px,100%);height:100%;overflow:auto;padding:18px 22px 44px;border-left:5px solid var(--orange)}
+.drawer h2{margin:6px 0 14px;font-size:20px;color:var(--navy)}
+.fs{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+.fs h4{margin:0 0 10px;font-size:13.5px;color:var(--navy)}
+.gate{position:fixed;inset:0;z-index:200;display:flex;align-items:flex-start;justify-content:center;padding:8vh 16px;background:linear-gradient(160deg,#0B1B4A,#0F3192)}
+.gate .box{width:min(380px,100%);background:#fff;border-radius:16px;padding:24px;border-top:5px solid var(--orange)}
+.gate h1{margin:0 0 4px;font-size:19px;color:var(--navy)}
+.gate p{margin:0 0 16px;font-size:13px;color:var(--muted)}
+.err{color:var(--bad);font-size:13px;min-height:20px;font-weight:600}
+body.locked>*:not(.gate):not(#toast){display:none!important}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#0B1B4A;color:#fff;border-left:4px solid var(--orange);padding:10px 16px;border-radius:9px;font-size:13.5px;z-index:120;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw}
+.toast.on{opacity:1}
+.spin{display:inline-block;width:20px;height:20px;border:3px solid var(--navy-tint);border-top-color:var(--orange);border-radius:50%;animation:sp .9s linear infinite;vertical-align:-4px;margin-right:8px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-right:6px}
+@media(max-width:640px){.wrap{padding:0 14px}.pi{flex-direction:column}.pi .act{width:100%}}
+</style>
+</head>
+<body class="locked">
+
+<div class="gate" id="gate">
+  <form class="box" onsubmit="return false">
+    <h1>Admin Promo Eigerindo</h1>
+    <p>Masuk untuk mengunggah juknis dan menerbitkannya ke toko.</p>
+    <label class="fl">Nama kamu<input class="inp" id="aName" autocomplete="name" placeholder="mis. Fany"></label>
+    <label class="fl">Password admin<input class="inp" id="aPw" type="password" autocomplete="current-password"></label>
+    <button class="btn primary" id="aGo" style="width:100%">Masuk</button>
+    <div class="err" id="aErr"></div>
+  </form>
+</div>
+
+<header class="bar"><div class="wrap">
+  <div class="row">
+    <div><b>Admin Promo Eigerindo</b><div class="sub" id="who"></div></div>
+    <span style="flex:1"></span>
+    <button class="btn sm" id="reload" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)">Muat ulang</button>
+    <button class="btn sm" id="out" style="background:var(--orange);color:#fff;border-color:var(--orange)">Keluar</button>
+  </div>
+  <nav class="tabs" id="tabs"></nav>
+</div></header>
+
+<main><div class="wrap" id="view"><div class="loading"><span class="spin"></span>Memuat…</div></div></main>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script src="config.js"></script>
+<script src="parse.js"></script>
+<script>
+'use strict';
+var CFG = window.PROMO_CFG || {};
+var $ = function (s, r) { return (r || document).querySelector(s); };
+var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); };
+var pad = function (n) { return ('0' + n).slice(-2); };
+var MONL = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+var MON = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+var fmtMonth = function (m) { var a = String(m).split('-'); return MONL[+a[1] - 1] + ' ' + a[0]; };
+var fmtDateS = function (iso) { if (!iso) return '–'; var a = iso.split('-'); return +a[2] + ' ' + MON[+a[1] - 1]; };
+function todayISO() { var d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+function toast(m, ms) { var t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('on'); }, ms || 3000); }
+var LS = { get: function (k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }, set: function (k, v) { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch (e) {} } };
+var colorOf = function (c) { return (CFG.CATS || {})[c] || (CFG.CATS || {}).Lainnya || '#5A6482'; };
+function rangeTxt(rs) {
+  return (rs || []).map(function (r) {
+    if (r[0] === r[1]) return fmtDateS(r[0]);
+    if (r[0].slice(0, 7) === r[1].slice(0, 7)) return (+r[0].slice(8)) + '–' + fmtDateS(r[1]);
+    return fmtDateS(r[0]) + ' – ' + fmtDateS(r[1]);
+  }).join(', ');
+}
+
+var A = { token: '', me: null, data: null, online: [], sites: [], log: [], tab: 'terbit', W: null, src: '' };
+
+function api(a, extra) {
+  var u = new URL(CFG.API); u.searchParams.set('a', a); if (A.token) u.searchParams.set('t', A.token);
+  Object.keys(extra || {}).forEach(function (k) { u.searchParams.set(k, extra[k]); });
+  return fetch(u.toString(), { redirect: 'follow' }).then(function (r) { return r.json(); })
+    .then(function (j) { if (j && j.error) throw Object.assign(new Error(j.message || j.error), { code: j.error }); return j; });
+}
+function post(body) {
+  return fetch(CFG.API, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(Object.assign({ t: A.token }, body)) }).then(function (r) { return r.json(); })
+    .then(function (j) { if (j && j.error) throw Object.assign(new Error(j.message || j.error), { code: j.error }); return j; });
+}
+
+/* ------------------------------------------------------------ login */
+function gate(msg) { document.body.classList.add('locked'); $('#gate').hidden = false; $('#aErr').textContent = msg || ''; setTimeout(function () { $('#aPw').focus(); }, 60); }
+function login() {
+  var pw = $('#aPw').value, nm = $('#aName').value.trim() || 'Admin', b = $('#aGo');
+  if (!pw) { $('#aErr').textContent = 'Isi password.'; return; }
+  b.disabled = true; b.textContent = 'Memeriksa…';
+  post({ a: 'adminLogin', pw: pw, name: nm }).then(function (r) {
+    A.token = r.token; A.me = r.site; LS.set('promo_admin', r.token); LS.set('promo_adminName', nm);
+    document.body.classList.remove('locked'); $('#gate').hidden = true; boot();
+  }).catch(function (e) { b.disabled = false; b.textContent = 'Masuk'; $('#aErr').textContent = e.message || 'Gagal.'; });
+}
+function logout() { post({ a: 'logout' }).catch(function () {}); A.token = ''; LS.set('promo_admin', ''); gate('Kamu sudah keluar.'); }
+
+/* ------------------------------------------------------------- boot */
+function boot() {
+  $('#view').innerHTML = '<div class="card"><span class="spin"></span>Memuat data…</div>';
+  api('boot').then(function (r) {
+    if (!r.admin) { A.token = ''; LS.set('promo_admin', ''); gate('Sesi bukan admin. Masuk lagi.'); return; }
+    A.data = r.data; A.online = r.online || []; A.me = r.site;
+    $('#who').textContent = (A.me.name || 'Admin') + ' · ' + (A.data.months.length) + ' bulan tersimpan · ' + A.data.sites + ' toko terdaftar';
+    return api('sites').then(function (s) { A.sites = s.sites || []; A.online = s.online || A.online; });
+  }).then(function () { if (A.token) render(); })
+    .catch(function (e) {
+      if (e.code === 'auth') { A.token = ''; LS.set('promo_admin', ''); gate('Sesi berakhir. Masuk lagi.'); return; }
+      $('#view').innerHTML = '<div class="card"><h2>Gagal memuat</h2><p>' + esc(e.message) + '</p><button class="btn" onclick="boot()">Coba lagi</button></div>';
+    });
+}
+
+/* ----------------------------------------------------------- render */
+var TABS = [['terbit', 'Unggah & terbitkan'], ['promo', 'Promo tersimpan'], ['toko', 'Daftar toko'], ['aktif', 'Toko online & log']];
+function render() {
+  $('#tabs').innerHTML = TABS.map(function (t) { return '<button data-tab="' + t[0] + '" class="' + (A.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('');
+  var v = $('#view');
+  if (A.tab === 'terbit') v.innerHTML = viewTerbit();
+  else if (A.tab === 'promo') v.innerHTML = viewPromo();
+  else if (A.tab === 'toko') v.innerHTML = viewToko();
+  else v.innerHTML = viewAktif();
+}
+
+/* ------------------------------------------------ tab: unggah juknis */
+function viewTerbit() {
+  var W = A.W;
+  var head = '<div class="card"><h2>Unggah juknis</h2>'
+    + '<p class="lead">Pilih file juknis (PDF atau PPTX). Isinya dibaca di browser kamu, tidak diunggah ke mana pun. Setelah itu periksa hasil bacanya, perbaiki yang meleset, lalu terbitkan.</p>'
+    + '<label class="drop" id="drop"><input type="file" id="file" accept=".pdf,.pptx"><b>Pilih file juknis</b><span class="small muted">atau seret file ke sini · PDF / PPTX</span></label>'
+    + '<div id="pstat" class="small muted" style="margin-top:10px"></div></div>';
+  if (!W) return head + '<div class="card"><h2>Belum ada yang dibaca</h2><p class="lead">Kamu juga bisa membuat bulan baru dari nol tanpa file.</p>'
+    + '<button class="btn" data-act="blank">Buat bulan kosong</button></div>';
+
+  var B = W.meta;
+  return head
+    + '<div class="card"><h2>Terbitkan ke toko</h2><p class="lead">Periksa dulu. Setelah diterbitkan, seluruh toko langsung melihat versi ini.</p>'
+      + '<div class="g2">'
+        + '<label class="fl">Bulan promo<input class="inp" type="month" data-meta="month" value="' + esc(W.month) + '"></label>'
+        + '<label class="fl">Judul<input class="inp" data-meta="title" value="' + esc(B.title) + '"></label>'
+        + '<label class="fl">Periode (teks di sampul juknis)<input class="inp" data-meta="period" value="' + esc(B.period) + '"></label>'
+        + '<label class="fl">Link file juknis (Drive/SharePoint)<input class="inp" data-meta="fileJuknis" value="' + esc(B.fileJuknis) + '" placeholder="https://…"></label>'
+        + '<label class="fl">Link file memo (opsional)<input class="inp" data-meta="fileMemo" value="' + esc(B.fileMemo) + '" placeholder="https://…"></label>'
+        + '<label class="fl">Catatan untuk toko (opsional)<input class="inp" data-meta="catatan" value="' + esc(B.catatan) + '"></label>'
+      + '</div>'
+      + '<div class="row-act"><button class="btn primary" data-act="publish">Terbitkan ke toko</button>'
+      + '<button class="btn" data-act="cancel">Batalkan</button>'
+      + '<span class="small muted">' + W.promos.length + ' promo · ' + W.memos.length + ' memo · sumber: ' + esc(A.src || 'manual') + '</span></div></div>'
+    + (W.unknown && W.unknown.length ? '<div class="note">' + W.unknown.length + ' slide tidak dikenali sebagai promo (biasanya halaman sampul atau penutup). Kalau ada promo yang hilang, tambahkan manual di bawah. <button class="btn sm" data-act="unknown" style="margin-left:6px">Lihat isinya</button></div>' : '')
+    + '<div class="card"><h2>Promo</h2><p class="lead">Klik Ubah untuk memperbaiki teks, periode, atau menambah link Excel list artikel.</p>'
+      + promoList(W.promos, 'w') + '<div class="row-act"><button class="btn" data-act="addPromo">Tambah promo</button></div></div>'
+    + '<div class="card"><h2>Memo &amp; update</h2>' + memoList(W.memos)
+      + '<div class="row-act"><button class="btn" data-act="addMemo">Tambah memo</button></div></div>';
+}
+function promoList(list, kind) {
+  if (!list.length) return '<p class="muted small">Belum ada promo.</p>';
+  return '<div class="plist">' + list.map(function (p, i) {
+    var xl = (p.excel || []).length;
+    return '<div class="pi" style="--c:' + colorOf(p.cat) + '"><div class="m">'
+      + '<b><span class="cat">' + esc(p.cat) + '</span>' + esc(p.title || '(tanpa judul)') + '</b>'
+      + '<span class="meta">' + esc(p.periode || rangeTxt(p.ranges)) + ' · ' + esc(rangeTxt(p.ranges) || 'tanggal belum terbaca')
+      + (p.berlaku ? ' · ' + esc(p.berlaku) : '') + ' · ' + (p.ket || []).length + ' ketentuan · ' + (p.contoh || []).length + ' contoh'
+      + (xl ? ' · ' + xl + ' link Excel' : '') + '</span></div>'
+      + '<div class="act"><button class="btn sm" data-edit="' + kind + '|' + i + '">Ubah</button>'
+      + '<button class="btn sm" data-up="' + i + '">↑</button><button class="btn sm" data-down="' + i + '">↓</button>'
+      + '<button class="btn sm danger" data-del="' + i + '">Hapus</button></div></div>';
+  }).join('') + '</div>';
+}
+function memoList(list) {
+  if (!list.length) return '<p class="muted small">Belum ada memo.</p>';
+  return '<div class="plist">' + list.map(function (m, i) {
+    return '<div class="pi" style="--c:var(--orange)"><div class="m"><b>' + esc(m.title || 'Update promo') + '</b>'
+      + '<span class="meta">' + esc(m.date || 'tanpa tanggal') + ' · ' + (m.isi || []).length + ' baris isi · ' + (m.tabel || []).length + ' baris tabel</span></div>'
+      + '<div class="act"><button class="btn sm" data-editm="' + i + '">Ubah</button><button class="btn sm danger" data-delm="' + i + '">Hapus</button></div></div>';
+  }).join('') + '</div>';
+}
+
+/* ------------------------------------------------ tab: promo tersimpan */
+function viewPromo() {
+  var ms = A.data.months;
+  if (!ms.length) return '<div class="card"><h2>Belum ada promo tersimpan</h2><p class="lead">Unggah juknis dulu di tab pertama.</p></div>';
+  var m = A.pm && ms.indexOf(A.pm) >= 0 ? A.pm : ms[ms.length - 1];
+  A.pm = m;
+  var list = A.data.promos.filter(function (p) { return p.month === m; });
+  var memos = A.data.memos.filter(function (x) { return x.month === m; });
+  var B = A.data.bulan[m] || {};
+  return '<div class="card"><h2>Promo yang sudah terbit</h2>'
+    + '<p class="lead">Pilih bulan untuk melihat apa yang dilihat toko sekarang. Untuk mengubah, tekan “Edit bulan ini”, perbaiki, lalu terbitkan ulang.</p>'
+    + '<label class="fl" style="max-width:260px">Bulan<select class="inp" id="pmSel">' + ms.map(function (x) { return '<option value="' + x + '"' + (x === m ? ' selected' : '') + '>' + fmtMonth(x) + '</option>'; }).join('') + '</select></label>'
+    + '<div class="small muted">' + esc(B.title || '') + (B.period ? ' · ' + esc(B.period) : '') + (B.updatedAt ? ' · diperbarui ' + esc(B.updatedAt) : '') + '</div>'
+    + '<div class="row-act"><button class="btn primary" data-act="editMonth">Edit bulan ini</button>'
+    + '<button class="btn danger" data-act="delMonth">Hapus bulan ini</button></div></div>'
+    + '<div class="card"><h2>' + list.length + ' promo</h2>' + promoList(list, 'r') + '</div>'
+    + (memos.length ? '<div class="card"><h2>Memo</h2>' + memoList(memos) + '</div>' : '');
+}
+
+/* ----------------------------------------------------- tab: daftar toko */
+function viewToko() {
+  return '<div class="card"><h2>Daftar No Site toko</h2>'
+    + '<p class="lead">Hanya No Site yang ada di daftar ini yang bisa membuka halaman promo. Tempel daftar dari Excel: satu baris per toko, format <code>NoSite;Nama Toko;Area</code> (boleh dipisah tab atau koma).</p>'
+    + '<textarea class="inp" id="siteText" rows="7" placeholder="2278;EIGER Adventure Store Jogja;Jateng 01&#10;2279;EIGER Solo Paragon;Jateng 01"></textarea>'
+    + '<div class="row-act"><button class="btn primary" data-act="siteMerge">Tambahkan / perbarui</button>'
+    + '<button class="btn warn" data-act="siteReplace">Ganti seluruh daftar</button>'
+    + '<span class="small muted">' + A.sites.length + ' toko terdaftar</span></div></div>'
+    + '<div class="card"><h2>Toko terdaftar</h2><div class="tbl-wrap"><table class="tbl"><thead><tr><th>No Site</th><th>Nama toko</th><th>Area</th><th></th></tr></thead><tbody>'
+    + (A.sites.map(function (s) {
+        return '<tr><td><b>' + esc(s.code) + '</b></td><td>' + esc(s.name) + '</td><td class="small muted">' + esc(s.area) + '</td>'
+          + '<td><button class="btn sm danger" data-sdel="' + esc(s.code) + '">Hapus</button></td></tr>';
+      }).join('') || '<tr><td colspan="4" class="muted" style="text-align:center;padding:22px">Belum ada toko. Tempel daftarnya di atas.</td></tr>')
+    + '</tbody></table></div></div>';
+}
+
+/* ------------------------------------------------------- tab: aktivitas */
+function viewAktif() {
+  var live = A.online.filter(function (o) { return o.ago < 180; });
+  var recent = A.online.filter(function (o) { return o.ago >= 180; });
+  var row = function (o) {
+    return '<tr><td>' + (o.ago < 180 ? '<span class="dot"></span>' : '') + '<b>' + esc(o.code) + '</b></td><td>' + esc(o.name || '') + '</td>'
+      + '<td class="small muted">' + (o.kind === 'admin' ? 'admin' : 'toko') + (o.page ? ' · ' + esc(o.page) : '') + '</td>'
+      + '<td class="small muted">' + (o.ago < 180 ? 'online' : o.ago < 3600 ? Math.round(o.ago / 60) + ' menit lalu' : Math.floor(o.ago / 3600) + ' jam lalu') + '</td></tr>';
+  };
+  return '<div class="card"><h2>' + live.length + ' toko sedang membuka halaman promo</h2>'
+    + '<p class="lead">Dihitung dari toko yang halamannya terbuka dalam 3 menit terakhir.</p>'
+    + '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>No Site</th><th>Nama</th><th>Jenis</th><th>Terakhir aktif</th></tr></thead><tbody>'
+    + (live.concat(recent).map(row).join('') || '<tr><td colspan="4" class="muted" style="text-align:center;padding:22px">Belum ada aktivitas.</td></tr>')
+    + '</tbody></table></div><div class="row-act"><button class="btn" data-act="refreshOnline">Segarkan</button></div></div>'
+    + '<div class="card"><h2>Riwayat</h2><div id="logBox" class="small muted">Memuat…</div></div>';
+}
+function loadLog() {
+  api('log').then(function (r) {
+    var b = $('#logBox'); if (!b) return;
+    b.innerHTML = '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Waktu</th><th>Oleh</th><th>Aksi</th><th>Keterangan</th></tr></thead><tbody>'
+      + ((r.log || []).map(function (x) {
+          return '<tr><td class="small">' + esc(String(x.at).replace('T', ' ').slice(0, 16)) + '</td><td>' + esc(x.by) + '</td><td>' + esc(x.aksi) + '</td><td class="small muted">' + esc(x.info) + '</td></tr>';
+        }).join('') || '<tr><td colspan="4" class="muted">Belum ada.</td></tr>') + '</tbody></table></div>';
+  }).catch(function () {});
+}
+
+/* ----------------------------------------------------- editor promo -- */
+function repRow(name, fields, v, i) {
+  return '<div class="r" data-rep="' + name + '|' + i + '">'
+    + fields.map(function (f) { return '<input class="inp" data-rf="' + f[0] + '" placeholder="' + f[1] + '" value="' + esc((v || {})[f[0]] || '') + '"' + (f[2] ? ' style="flex:' + f[2] + '"' : '') + '>'; }).join('')
+    + '<button class="btn sm danger" data-repdel="' + name + '|' + i + '">×</button></div>';
+}
+function openPromoEditor(idx) {
+  var p = A.W.promos[idx];
+  var cats = Object.keys(CFG.CATS || { Lainnya: 1 });
+  var html = '<div class="ov" id="ov"><div class="drawer"><button class="btn sm" data-close style="float:right">Tutup</button>'
+    + '<h2>Ubah promo</h2>'
+    + '<div class="fs"><h4>Identitas</h4><div class="g2">'
+      + '<label class="fl">Kategori<select class="inp" data-f="cat">' + cats.map(function (c) { return '<option' + (c === p.cat ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('')
+        + (cats.indexOf(p.cat) < 0 ? '<option selected>' + esc(p.cat) + '</option>' : '') + '</select></label>'
+      + '<label class="fl">Berlaku untuk<select class="inp" data-f="site">'
+        + ['reguler', 'bazaar', 'selected'].map(function (s) { return '<option value="' + s + '"' + (p.site === s ? ' selected' : '') + '>' + (s === 'reguler' ? 'Semua toko reguler' : s === 'bazaar' ? 'Bazaar / factory outlet' : 'Toko terpilih') + '</option>'; }).join('') + '</select></label>'
+      + '</div><label class="fl">Judul promo<input class="inp" data-f="title" value="' + esc(p.title) + '"></label></div>'
+    + '<div class="fs"><h4>Periode</h4>'
+      + '<label class="fl">Teks periode di juknis<input class="inp" data-f="periode" value="' + esc(p.periode) + '"></label>'
+      + '<p class="small muted" style="margin:0 0 8px">Tanggal di bawah yang dipakai kalender. Tekan “Baca ulang dari teks” kalau teks periode kamu ubah.</p>'
+      + '<div class="rep" id="repRanges">' + (p.ranges || []).map(function (r, i) {
+          return '<div class="r" data-rep="ranges|' + i + '"><input class="inp" type="date" data-rf="0" value="' + esc(r[0]) + '"><input class="inp" type="date" data-rf="1" value="' + esc(r[1]) + '"><button class="btn sm danger" data-repdel="ranges|' + i + '">×</button></div>';
+        }).join('') + '</div>'
+      + '<div class="row-act" style="margin-top:0"><button class="btn sm" data-repadd="ranges">Tambah rentang</button>'
+      + '<button class="btn sm" data-act="reparse">Baca ulang dari teks</button>'
+      + '<label class="small" style="display:flex;gap:6px;align-items:center;font-weight:700"><input type="checkbox" data-f="exact"' + (p.exact ? ' checked' : '') + '> Tanggal pasti</label></div></div>'
+    + '<div class="fs"><h4>Syarat</h4><div class="g2">'
+      + '<label class="fl">Min. transaksi<input class="inp" data-f="minTrx" value="' + esc(p.minTrx) + '"></label>'
+      + '<label class="fl">Maks. transaksi<input class="inp" data-f="maxTrx" value="' + esc(p.maxTrx) + '"></label>'
+      + '<label class="fl">Berlaku di<input class="inp" data-f="berlaku" value="' + esc(p.berlaku) + '"></label>'
+      + '<label class="fl">Produk<input class="inp" data-f="produk" value="' + esc(p.produk) + '"></label>'
+      + '</div>'
+      + '<label class="fl">Ketentuan — satu baris satu poin<textarea class="inp" data-f="ket" rows="6">' + esc((p.ket || []).join('\n')) + '</textarea></label>'
+      + '<label class="fl">Tips kasir<input class="inp" data-f="tips" value="' + esc(p.tips) + '"></label></div>'
+    + '<div class="fs"><h4>Contoh penerapan</h4><div class="rep" id="repContoh">'
+      + (p.contoh || []).map(function (c, i) {
+          return '<div class="r" style="flex-wrap:wrap" data-rep="contoh|' + i + '">'
+            + '<input class="inp" data-rf="judul" placeholder="Judul contoh" value="' + esc(c.judul || '') + '" style="flex:1 1 180px">'
+            + '<input class="inp" data-rf="item" placeholder="Belanja apa" value="' + esc(c.item || '') + '" style="flex:1 1 200px">'
+            + '<input class="inp" data-rf="hasil" placeholder="Hasil" value="' + esc(c.hasil || '') + '" style="flex:1 1 160px">'
+            + '<input class="inp" data-rf="bayar" placeholder="Bayar" value="' + esc(c.bayar || '') + '" style="flex:0 1 130px">'
+            + '<input class="inp" data-rf="pesan" placeholder="Pesan ke kasir" value="' + esc(c.pesan || '') + '" style="flex:1 1 200px">'
+            + '<label class="small" style="display:flex;gap:5px;align-items:center;font-weight:700"><input type="checkbox" data-rf="ok"' + (c.ok ? ' checked' : '') + '> berhasil</label>'
+            + '<button class="btn sm danger" data-repdel="contoh|' + i + '">×</button></div>';
+        }).join('') + '</div><button class="btn sm" data-repadd="contoh">Tambah contoh</button></div>'
+    + '<div class="fs"><h4>Link Excel list artikel</h4><p class="small muted" style="margin:0 0 8px">Tempel link Google Sheets / SharePoint yang berisi daftar artikel promo ini.</p>'
+      + '<div class="rep" id="repExcel">' + (p.excel || []).map(function (x, i) { return repRow('excel', [['t', 'Nama file', '1'], ['u', 'https://…', '2']], x, i); }).join('') + '</div>'
+      + '<button class="btn sm" data-repadd="excel">Tambah link</button></div>'
+    + '<div class="row-act"><button class="btn primary" data-act="savePromo">Simpan perubahan</button><button class="btn" data-close>Batal</button></div>'
+    + '</div></div>';
+  var d = document.createElement('div'); d.innerHTML = html; document.body.appendChild(d.firstChild);
+  $('#ov').dataset.idx = idx;
+}
+function readRep(boxId, fields) {
+  var box = $('#' + boxId); if (!box) return [];
+  return $$('.r', box).map(function (r) {
+    var o = {};
+    $$('[data-rf]', r).forEach(function (el) { o[el.dataset.rf] = el.type === 'checkbox' ? el.checked : el.value.trim(); });
+    return o;
+  });
+}
+function savePromoEditor() {
+  var ov = $('#ov'), idx = +ov.dataset.idx, p = A.W.promos[idx];
+  $$('[data-f]', ov).forEach(function (el) {
+    var k = el.dataset.f;
+    p[k] = el.type === 'checkbox' ? el.checked : el.value.trim();
+  });
+  p.ket = String(p.ket || '').split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+  p.ranges = readRep('repRanges', null).map(function (o) { return [o['0'], o['1']]; }).filter(function (r) { return r[0] && r[1]; });
+  p.contoh = readRep('repContoh', null).filter(function (c) { return c.judul || c.item; })
+    .map(function (c, i) { return { n: i + 1, judul: c.judul, item: c.item, hasil: c.hasil, bayar: c.bayar, pesan: c.pesan, ok: !!c.ok }; });
+  p.excel = readRep('repExcel', null).filter(function (x) { return x.u; });
+  closeOv(); render(); toast('Perubahan disimpan sementara. Jangan lupa Terbitkan.');
+}
+function openMemoEditor(idx) {
+  var m = A.W.memos[idx];
+  var html = '<div class="ov" id="ov"><div class="drawer"><button class="btn sm" data-close style="float:right">Tutup</button><h2>Ubah memo</h2>'
+    + '<div class="fs"><div class="g2"><label class="fl">Judul<input class="inp" data-f="title" value="' + esc(m.title) + '"></label>'
+    + '<label class="fl">Tanggal<input class="inp" type="date" data-f="date" value="' + esc(m.date || '') + '"></label></div>'
+    + '<label class="fl">Isi — satu baris satu poin<textarea class="inp" data-f="isi" rows="6">' + esc((m.isi || []).join('\n')) + '</textarea></label>'
+    + '<label class="fl">Tabel perubahan (opsional)<textarea class="inp" data-f="tabel" rows="4">' + esc((m.tabel || []).join('\n')) + '</textarea></label>'
+    + '<label class="fl">Link file memo<input class="inp" data-f="link" value="' + esc(m.link || '') + '" placeholder="https://…"></label></div>'
+    + '<div class="row-act"><button class="btn primary" data-act="saveMemo">Simpan</button><button class="btn" data-close>Batal</button></div></div></div>';
+  var d = document.createElement('div'); d.innerHTML = html; document.body.appendChild(d.firstChild);
+  $('#ov').dataset.idx = idx;
+}
+function saveMemoEditor() {
+  var ov = $('#ov'), m = A.W.memos[+ov.dataset.idx];
+  $$('[data-f]', ov).forEach(function (el) { m[el.dataset.f] = el.value.trim(); });
+  m.isi = String(m.isi || '').split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+  m.tabel = String(m.tabel || '').split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+  closeOv(); render(); toast('Memo disimpan sementara.');
+}
+function closeOv() { var o = $('#ov'); if (o) o.remove(); }
+
+/* ------------------------------------------------------------ aksi -- */
+function blankPromo() {
+  var m = (A.W && A.W.month) || todayISO().slice(0, 7);
+  return { id: '', cat: 'Reguler', title: '', periode: '', ranges: [[m + '-01', m + '-' + pad(new Date(+m.slice(0, 4), +m.slice(5), 0).getDate())]],
+    exact: true, minTrx: '', maxTrx: '', berlaku: '', produk: '', ket: [], tips: '', contoh: [], excel: [], site: 'reguler' };
+}
+function startBlank() {
+  A.src = 'manual';
+  A.W = { month: todayISO().slice(0, 7), meta: { title: '', period: '', fileJuknis: '', fileMemo: '', catatan: '' }, promos: [], memos: [], unknown: [] };
+  render();
+}
+function loadMonthToW(m) {
+  var B = A.data.bulan[m] || {};
+  A.src = 'data tersimpan ' + fmtMonth(m);
+  A.W = { month: m,
+    meta: { title: B.title || '', period: B.period || '', fileJuknis: B.fileJuknis || '', fileMemo: B.fileMemo || '', catatan: B.catatan || '' },
+    promos: JSON.parse(JSON.stringify(A.data.promos.filter(function (p) { return p.month === m; }))),
+    memos: JSON.parse(JSON.stringify(A.data.memos.filter(function (x) { return x.month === m; }))), unknown: [] };
+  A.tab = 'terbit'; render(); window.scrollTo(0, 0);
+}
+async function handleFile(f) {
+  var st = $('#pstat');
+  st.innerHTML = '<span class="spin"></span>Membaca ' + esc(f.name) + '…';
+  try {
+    var r = await window.Juknis.parseFile(f);
+    A.src = f.name + ' (' + r.slides + ' slide)';
+    A.W = { month: r.month, meta: { title: r.title, period: r.period, fileJuknis: '', fileMemo: '', catatan: '' },
+      promos: r.promos, memos: r.memos, unknown: r.unknown };
+    render();
+    toast(r.promos.length + ' promo terbaca dari ' + r.slides + ' slide. Periksa dulu sebelum diterbitkan.', 5000);
+  } catch (e) {
+    st.innerHTML = '<span style="color:var(--bad)">' + esc(e.message || String(e)) + '</span>';
+  }
+}
+function readMeta() {
+  $$('[data-meta]').forEach(function (el) {
+    var k = el.dataset.meta;
+    if (k === 'month') A.W.month = el.value; else A.W.meta[k] = el.value.trim();
+  });
+}
+function publish() {
+  readMeta();
+  if (!/^\d{4}-\d{2}$/.test(A.W.month)) { toast('Isi bulan promo dulu.'); return; }
+  if (!A.W.promos.length && !A.W.memos.length) { toast('Belum ada promo untuk diterbitkan.'); return; }
+  var bad = A.W.promos.filter(function (p) { return !p.title || !(p.ranges || []).length; });
+  if (bad.length && !confirm(bad.length + ' promo belum lengkap judul atau tanggalnya. Terbitkan saja?')) return;
+  if (!confirm('Terbitkan ' + A.W.promos.length + ' promo untuk ' + fmtMonth(A.W.month) + '?\nData bulan ini di toko akan diganti dengan versi ini.')) return;
+  toast('Mengirim ke spreadsheet…', 8000);
+  post({ a: 'save', month: A.W.month, meta: A.W.meta, promos: A.W.promos, memos: A.W.memos })
+    .then(function (r) { A.data = r.data; A.W = null; A.tab = 'promo'; A.pm = r.data.months[r.data.months.length - 1]; render(); toast('Terbit. Toko sudah bisa melihatnya.'); })
+    .catch(function (e) { toast('Gagal menerbitkan: ' + (e.message || e.code), 6000); });
+}
+
+/* ----------------------------------------------------------- events - */
+document.addEventListener('click', function (e) {
+  var t = e.target;
+  if (t.closest('#aGo')) { login(); return; }
+  if (t.closest('#out')) { logout(); return; }
+  if (t.closest('#reload')) { boot(); return; }
+  var tb = t.closest('[data-tab]'); if (tb) { A.tab = tb.dataset.tab; render(); if (A.tab === 'aktif') loadLog(); return; }
+  if (t.closest('[data-close]') || t.id === 'ov') { closeOv(); return; }
+
+  var ed = t.closest('[data-edit]');
+  if (ed) {
+    var a = ed.dataset.edit.split('|');
+    if (a[0] === 'r') { toast('Tekan “Edit bulan ini” dulu untuk mengubah data yang sudah terbit.'); return; }
+    openPromoEditor(+a[1]); return;
+  }
+  var em = t.closest('[data-editm]'); if (em) { openMemoEditor(+em.dataset.editm); return; }
+  var dl = t.closest('[data-del]'); if (dl) { if (confirm('Hapus promo ini dari daftar?')) { A.W.promos.splice(+dl.dataset.del, 1); render(); } return; }
+  var dm = t.closest('[data-delm]'); if (dm) { if (confirm('Hapus memo ini?')) { A.W.memos.splice(+dm.dataset.delm, 1); render(); } return; }
+  var up = t.closest('[data-up]'); if (up) { var i = +up.dataset.up; if (i > 0) { var x = A.W.promos.splice(i, 1)[0]; A.W.promos.splice(i - 1, 0, x); render(); } return; }
+  var dn = t.closest('[data-down]'); if (dn) { var j = +dn.dataset.down; if (j < A.W.promos.length - 1) { var y = A.W.promos.splice(j, 1)[0]; A.W.promos.splice(j + 1, 0, y); render(); } return; }
+
+  var ra = t.closest('[data-repadd]'); if (ra) {
+    var box = { ranges: 'repRanges', contoh: 'repContoh', excel: 'repExcel' }[ra.dataset.repadd], b = $('#' + box);
+    var n = $$('.r', b).length, html = ra.dataset.repadd === 'ranges'
+      ? '<div class="r" data-rep="ranges|' + n + '"><input class="inp" type="date" data-rf="0"><input class="inp" type="date" data-rf="1"><button class="btn sm danger" data-repdel="ranges|' + n + '">×</button></div>'
+      : ra.dataset.repadd === 'excel' ? repRow('excel', [['t', 'Nama file', '1'], ['u', 'https://…', '2']], {}, n)
+      : '<div class="r" style="flex-wrap:wrap" data-rep="contoh|' + n + '"><input class="inp" data-rf="judul" placeholder="Judul contoh" style="flex:1 1 180px"><input class="inp" data-rf="item" placeholder="Belanja apa" style="flex:1 1 200px"><input class="inp" data-rf="hasil" placeholder="Hasil" style="flex:1 1 160px"><input class="inp" data-rf="bayar" placeholder="Bayar" style="flex:0 1 130px"><input class="inp" data-rf="pesan" placeholder="Pesan ke kasir" style="flex:1 1 200px"><label class="small" style="display:flex;gap:5px;align-items:center;font-weight:700"><input type="checkbox" data-rf="ok" checked> berhasil</label><button class="btn sm danger" data-repdel="contoh|' + n + '">×</button></div>';
+    b.insertAdjacentHTML('beforeend', html); return;
+  }
+  var rd = t.closest('[data-repdel]'); if (rd) { var r = t.closest('.r'); if (r) r.remove(); return; }
+
+  var sd = t.closest('[data-sdel]'); if (sd) {
+    if (!confirm('Hapus No Site ' + sd.dataset.sdel + ' dari daftar? Toko itu tidak bisa login lagi.')) return;
+    post({ a: 'siteDel', code: sd.dataset.sdel }).then(function (r) { A.sites = r.sites; render(); toast('Dihapus.'); }).catch(function (er) { toast('Gagal: ' + er.message); });
+    return;
+  }
+
+  var ac = t.closest('[data-act]'); if (!ac) return;
+  var k = ac.dataset.act;
+  if (k === 'blank') startBlank();
+  else if (k === 'cancel') { if (confirm('Batalkan? Hasil baca yang belum diterbitkan akan hilang.')) { A.W = null; render(); } }
+  else if (k === 'publish') publish();
+  else if (k === 'addPromo') { readMeta(); A.W.promos.push(blankPromo()); render(); openPromoEditor(A.W.promos.length - 1); }
+  else if (k === 'addMemo') { readMeta(); A.W.memos.push({ title: '', date: '', isi: [], tabel: [], link: '' }); render(); openMemoEditor(A.W.memos.length - 1); }
+  else if (k === 'savePromo') savePromoEditor();
+  else if (k === 'saveMemo') saveMemoEditor();
+  else if (k === 'reparse') {
+    var ov = $('#ov'), txt = $('[data-f="periode"]', ov).value;
+    var P = window.Juknis.parsePeriode(txt, A.W.month);
+    $('#repRanges').innerHTML = P.ranges.map(function (r, i) {
+      return '<div class="r" data-rep="ranges|' + i + '"><input class="inp" type="date" data-rf="0" value="' + r[0] + '"><input class="inp" type="date" data-rf="1" value="' + r[1] + '"><button class="btn sm danger" data-repdel="ranges|' + i + '">×</button></div>';
+    }).join('');
+    $('[data-f="exact"]', ov).checked = P.exact;
+    toast(P.exact ? 'Tanggal terbaca: ' + rangeTxt(P.ranges) : 'Tanggal tidak jelas, dipakai satu bulan penuh. Periksa manual.');
+  }
+  else if (k === 'unknown') {
+    var h = '<div class="ov" id="ov"><div class="drawer"><button class="btn sm" data-close style="float:right">Tutup</button><h2>Slide yang tidak dikenali</h2>'
+      + A.W.unknown.map(function (u) { return '<div class="fs"><h4>Slide ' + u.slide + '</h4><pre style="white-space:pre-wrap;font-size:12px;margin:0">' + esc(u.text) + '</pre></div>'; }).join('')
+      + '</div></div>';
+    var d = document.createElement('div'); d.innerHTML = h; document.body.appendChild(d.firstChild);
+  }
+  else if (k === 'editMonth') loadMonthToW(A.pm);
+  else if (k === 'delMonth') {
+    if (!confirm('Hapus seluruh promo & memo ' + fmtMonth(A.pm) + ' dari database? Tidak bisa dibatalkan.')) return;
+    post({ a: 'delMonth', month: A.pm }).then(function (r) { A.data = r.data; A.pm = null; render(); toast('Bulan dihapus.'); }).catch(function (er) { toast('Gagal: ' + er.message); });
+  }
+  else if (k === 'siteMerge' || k === 'siteReplace') {
+    var txt2 = $('#siteText').value;
+    if (!txt2.trim()) { toast('Tempel daftar tokonya dulu.'); return; }
+    if (k === 'siteReplace' && !confirm('Ganti seluruh daftar toko dengan isi kotak ini?')) return;
+    post({ a: 'siteSave', text: txt2, mode: k === 'siteReplace' ? 'replace' : 'merge' })
+      .then(function (r) { A.sites = r.sites; render(); toast('Daftar toko tersimpan: ' + r.sites.length + ' toko.'); })
+      .catch(function (er) { toast('Gagal: ' + er.message); });
+  }
+  else if (k === 'refreshOnline') { api('sites').then(function (s) { A.sites = s.sites; A.online = s.online; render(); loadLog(); }); }
+});
+document.addEventListener('change', function (e) {
+  if (e.target.id === 'file' && e.target.files[0]) { handleFile(e.target.files[0]); e.target.value = ''; }
+  if (e.target.id === 'pmSel') { A.pm = e.target.value; render(); }
+});
+document.addEventListener('dragover', function (e) { var d = e.target.closest && e.target.closest('#drop'); if (d) { e.preventDefault(); d.classList.add('over'); } });
+document.addEventListener('dragleave', function (e) { var d = e.target.closest && e.target.closest('#drop'); if (d) d.classList.remove('over'); });
+document.addEventListener('drop', function (e) {
+  var d = e.target.closest && e.target.closest('#drop'); if (!d) return;
+  e.preventDefault(); d.classList.remove('over');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') closeOv();
+  if (e.key === 'Enter' && e.target && (e.target.id === 'aPw' || e.target.id === 'aName')) { e.preventDefault(); login(); }
+});
+
+(function init() {
+  if (!/^https:\/\/script\.google(usercontent)?\.com\//.test(CFG.API || '')) {
+    document.body.classList.remove('locked'); $('#gate').hidden = true;
+    $('#view').innerHTML = '<div class="card"><h2>Belum tersambung</h2><p>Isi <b>API</b> di <code>config.js</code> dengan URL Web App Apps Script.</p></div>';
+    return;
+  }
+  $('#aName').value = LS.get('promo_adminName');
+  A.token = LS.get('promo_admin');
+  if (!A.token) { gate(''); return; }
+  document.body.classList.remove('locked'); $('#gate').hidden = true; boot();
+})();
+</script>
+</body>
+</html>
