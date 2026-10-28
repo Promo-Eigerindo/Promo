@@ -95,6 +95,9 @@ body.locked>*:not(.gate):not(#toast){display:none!important}
     <label class="fl">Password admin<input class="inp" id="aPw" type="password" autocomplete="current-password"></label>
     <button class="btn primary" id="aGo" style="width:100%">Masuk</button>
     <div class="err" id="aErr"></div>
+    <button type="button" class="btn sm" id="aTest" style="margin-top:6px">Tes koneksi server</button>
+    <div class="small muted" id="aTestOut" style="margin-top:8px;line-height:1.5"></div>
+    <div class="small muted" style="margin-top:10px">Versi halaman: 2</div>
   </form>
 </div>
 
@@ -166,6 +169,19 @@ function post(body) {
     .then(function (j) { if (j && j.error) throw Object.assign(new Error(j.message || j.error), { code: j.error }); return j; });
 }
 
+function testConn() {
+  var o = $('#aTestOut'), t0 = Date.now();
+  o.textContent = 'Menghubungi server…';
+  if (!/^https:\/\/script\.google(usercontent)?\.com\//.test(CFG.API || '') || /GANTI_DENGAN/.test(CFG.API)) { o.innerHTML = '<b style="color:var(--bad)">config.js belum berisi URL Web App.</b>'; return; }
+  api('health').then(function (r) {
+    o.innerHTML = '<b style="color:var(--ok)">Server menjawab (' + ((Date.now() - t0) / 1000).toFixed(1) + ' detik).</b><br>'
+      + 'Setup spreadsheet: ' + (r.setup ? 'sudah' : '<b style="color:var(--bad)">BELUM — jalankan setup()</b>') + '<br>'
+      + 'ADMIN_PW terisi: ' + (r.adminPw ? 'ya' : '<b style="color:var(--bad)">belum</b>') + '<br>'
+      + 'Versi backend: ' + (r.version || 'lama');
+  }).catch(function (e) {
+    o.innerHTML = '<b style="color:var(--bad)">' + esc(e.message) + '</b>';
+  });
+}
 /* ------------------------------------------------------------ login */
 function gate(msg) { document.body.classList.add('locked'); $('#gate').hidden = false; $('#aErr').textContent = msg || ''; setTimeout(function () { $('#aPw').focus(); }, 60); }
 function login() {
@@ -471,6 +487,7 @@ function publish() {
 document.addEventListener('click', function (e) {
   var t = e.target;
   if (t.closest('#aGo')) { login(); return; }
+  if (t.closest('#aTest')) { testConn(); return; }
   if (t.closest('#out')) { logout(); return; }
   if (t.closest('#reload')) { boot(); return; }
   var tb = t.closest('[data-tab]'); if (tb) { A.tab = tb.dataset.tab; render(); if (A.tab === 'aktif') loadLog(); return; }
