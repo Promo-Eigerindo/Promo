@@ -19,6 +19,7 @@
   box-sizing:border-box;padding-top:env(safe-area-inset-top,0);padding-bottom:env(safe-area-inset-bottom,0);color-scheme:light only;
 }
 *,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%;scroll-padding-top:120px}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14.5px;line-height:1.5;overflow-x:hidden}
 button,input,select,textarea{font:inherit;color:inherit}
@@ -278,6 +279,7 @@ function doLogin() {
   b.disabled = true; b.textContent = 'Memeriksa…';
   post({ a: 'login', site: code, ua: navigator.userAgent.slice(0, 100) }).then(function (r) {
     App.token = r.token; App.site = r.site; LS.set('promo_tok', r.token);
+    b.disabled = false; b.textContent = 'Buka promo';
     hideGate(); boot();
   }).catch(function (e) {
     b.disabled = false; b.textContent = 'Buka promo';
