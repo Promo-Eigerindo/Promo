@@ -238,6 +238,13 @@
       ['List artikel', 'Artikel di list', 'SKU ada di toko', 'Pcs display', 'Pcs gudang', 'Pcs damage', 'SKU belum display', 'Kode list tanpa stok']]
       .concat(R.per.map(function (p) { return [p.name, p.listN, p.sku, p.disp, p.wh, p.dmg, p.belum, p.kosong]; }))
       .concat([['TOTAL', '', R.tot.sku, R.tot.disp, R.tot.wh, R.tot.dmg, R.tot.belum, '']]), 'Ringkasan', [34, 16, 16, 12, 12, 12, 18, 20]);
+    var mcN = function (v) { v = tx(v); return !v || v === '-' || /^\d+$/.test(v) ? 'Tanpa MC' : v; }, MC = {};
+    R.found.forEach(function (x) {
+      var k = [mcN(x.it.mc2), mcN(x.it.mc3), mcN(x.it.mc4)].join('\u0001'), o = MC[k] || (MC[k] = [0, 0, 0, 0]);
+      o[0]++; o[1] += x.it.disp; o[2] += x.it.wh; if (x.st === 'wh') o[3]++;
+    });
+    add([['MC Lv2', 'MC Lv3', 'MC Lv4', 'SKU promo', 'Pcs display', 'Pcs gudang', 'SKU belum display']].concat(Object.keys(MC).sort().map(function (k) { return k.split('\u0001').concat(MC[k]); })),
+      'Per MC', [22, 22, 26, 11, 12, 12, 18]);
     var base = ['SKU', 'Generic', 'Nama', 'Warna', 'Size', 'Harga normal', 'Diskon %', 'Harga promo', 'MC Lv2', 'MC Lv3', 'MC Lv4', 'Display', 'Gudang', 'Damage', 'Lainnya', 'Total', 'Status', 'Bin'];
     var rowOf = function (x) { var i = x.it, p = x.pr || {}; return [i.sku, i.gen, i.base, i.color, i.size, p.normal || '', p.disc || '', p.promo || '', i.mc2, i.mc3, i.mc4, i.disp, i.wh, i.dmg, i.oth, i.disp + i.wh + i.dmg + i.oth, ST_TXT[x.st], i.bins.map(function (b) { return b.bin + ' (' + b.qty + ')'; }).join(', ')]; };
     add([['List'].concat(base)].concat(R.found.map(function (x) { return [x.hits.map(function (h) { return lists[h[0]].name; }).join(' | ')].concat(rowOf(x)); })), 'Semua SKU promo', [24, 14, 11, 34, 7, 8, 13, 9, 13, 14, 14, 16, 8, 8, 8, 8, 8, 22, 40]);
