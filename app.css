@@ -189,3 +189,46 @@ body.locked>*:not(.gate):not(.toast){display:none!important}
 }
 @media (min-width:1280px){.igrid.wide{grid-template-columns:repeat(8,minmax(0,1fr))}}
 @media (max-width:380px){.ic .i{width:44px;height:44px;border-radius:14px}.ic span{font-size:11px}.igrid{gap:14px 2px}}
+
+/* ===================================================== foto produk */
+.pth{all:unset;box-sizing:border-box;cursor:zoom-in;width:64px;height:64px;flex:none;border-radius:12px;background:#fff;border:1px solid var(--line);overflow:hidden;display:grid;place-items:center;position:relative}
+.pth img{width:100%;height:100%;object-fit:contain;display:block}
+.pth.none{cursor:default;background:var(--tint);color:var(--line-2)}
+.pth.none svg{width:24px;height:24px}
+.pth .n{position:absolute;right:3px;bottom:3px;background:rgba(11,27,74,.72);color:#fff;font-size:10px;font-weight:800;border-radius:6px;padding:0 5px;line-height:16px}
+.pth.alt::after{content:"warna lain";position:absolute;left:0;right:0;top:0;background:rgba(228,111,63,.9);color:#fff;font-size:9px;font-weight:800;text-align:center;line-height:14px}
+.pth.wait{background:linear-gradient(90deg,var(--tint) 25%,#fff 50%,var(--tint) 75%);background-size:200% 100%;animation:shim 1.2s linear infinite}
+@keyframes shim{to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.pth.wait{animation:none}}
+
+/* galeri zoom (gaya marketplace) */
+body.lb-open{overflow:hidden}
+.lb{position:fixed;inset:0;z-index:300;background:#050C22;display:flex;align-items:stretch;justify-content:center}
+.lb-box{display:flex;flex-direction:column;width:100%;max-width:760px;height:100%;padding:calc(10px + env(safe-area-inset-top,0px)) 0 calc(12px + env(safe-area-inset-bottom,0px))}
+.lb-top{display:flex;align-items:center;justify-content:space-between;padding:0 14px 8px;color:#fff}
+.lb-c{font-size:13px;font-weight:700;background:rgba(255,255,255,.14);border-radius:999px;padding:4px 12px}
+.lb-x{width:42px;height:42px;border-radius:50%;border:0;background:rgba(255,255,255,.14);color:#fff;font-size:26px;line-height:1}
+.lb-stage{position:relative;flex:1;min-height:0;background:#fff;overflow:hidden;touch-action:pan-y;display:grid;place-items:center}
+.lb-img{max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain;transition:transform .12s ease-out;user-select:none;-webkit-user-drag:none}
+.lb.zoomed .lb-stage{touch-action:none;cursor:zoom-out}
+.lb-nav{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:rgba(255,255,255,.92);color:var(--brand);font-size:26px;font-weight:700;line-height:1;box-shadow:0 2px 10px rgba(11,27,74,.15)}
+.lb-nav.l{left:10px}.lb-nav.r{right:10px}
+.lb.single .lb-nav,.lb.single .lb-th,.lb.zoomed .lb-nav{display:none}
+.lb-hint{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);background:rgba(11,27,74,.65);color:#fff;font-size:11.5px;font-weight:600;border-radius:999px;padding:4px 10px;pointer-events:none}
+.lb.zoomed .lb-hint{display:none}
+.lb-th{display:flex;gap:8px;overflow-x:auto;padding:10px 14px 4px;scrollbar-width:none}
+.lb-th::-webkit-scrollbar{display:none}
+.lb-th button{all:unset;cursor:pointer;flex:none;width:58px;height:58px;border-radius:10px;background:#fff;overflow:hidden;border:2px solid transparent;opacity:.65}
+.lb-th button.on{border-color:var(--orange);opacity:1}
+.lb-th img{width:100%;height:100%;object-fit:contain}
+.lb-info{padding:8px 16px 0;color:#fff}
+.lb-info b{display:block;font-size:15px;line-height:1.3}
+.lb-info small{display:block;font-size:12.5px;color:#C9D3F0;margin-top:2px}
+.lb-info em{display:block;font-style:normal;font-size:12px;color:#FFC9B2;margin-top:4px}
+@media (min-width:960px){
+  .lb{align-items:center;background:rgba(5,12,34,.88)}
+  .lb-box{height:auto;max-height:94vh;max-width:820px;background:#0B1B4A;border-radius:22px;padding:14px 0 16px;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+  .lb-stage{flex:none;height:min(68vh,620px);cursor:crosshair;margin:0 16px;border-radius:14px}
+  .lb-hint{display:none}
+  .lb-img{transition:transform .05s linear}
+}
