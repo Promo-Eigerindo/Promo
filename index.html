@@ -141,6 +141,28 @@ table.gt{border-collapse:separate;border-spacing:0;font-size:11px;width:100%;min
 .kai .tg{flex:none}
 
 /* ---------- list artikel & cek stok ---------- */
+.mcbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.mcact{display:flex;gap:6px;margin-left:auto}
+.mcg>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap}
+.mcg>summary::-webkit-details-marker{display:none}
+.mcg>summary::before{content:"";width:8px;height:8px;border-right:2.5px solid currentColor;border-bottom:2.5px solid currentColor;transform:rotate(-45deg);transition:transform .15s;flex:none;margin-right:2px}
+.mcg[open]>summary::before{transform:rotate(45deg)}
+.mcg>summary .mn{font-weight:800;min-width:0}
+.mcg>summary .ms{font-size:12px;opacity:.85;font-weight:600}
+.mcg>summary .mb{margin-left:auto;font-size:11.5px;font-weight:800;border-radius:999px;padding:2px 9px;background:var(--orange-tint);color:var(--orange-2);white-space:nowrap}
+.mcg>summary .mb.ok{background:var(--ok-bg);color:var(--ok)}
+.mc1{border:1px solid var(--line);border-radius:16px;margin-top:10px;background:#fff;overflow:hidden}
+.mc1>summary{padding:12px 14px;background:var(--brand);color:#fff;font-size:14.5px}
+.mc1>summary .mb{background:#fff}
+.mc1>summary .mb.ok{background:#fff;color:var(--ok)}
+.mc2>summary{padding:10px 14px;background:var(--tint);color:var(--brand-2);border-top:1px solid var(--line);font-size:13.5px}
+.mc3>summary{padding:9px 14px 9px 24px;border-top:1px solid var(--line);font-size:13px;color:var(--ink)}
+.mc3>summary .mn{font-weight:700}
+.mcrows{padding:0 12px 4px 24px;border-top:1px solid var(--line)}
+.mcrows .crow:last-child{border-bottom:0}
+@media (max-width:640px){.mc3>summary{padding-left:16px}.mcrows{padding:0 8px 4px 10px}.mcact{margin-left:0}}
+@media (prefers-reduced-motion:reduce){.mcg>summary::before{transition:none}}
+
 .pr{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 7px;margin:5px 0 2px}
 .pr .dsc{background:var(--bad);color:#fff;font-size:11px;font-weight:800;border-radius:6px;padding:1px 6px;align-self:center}
 .pr b{font-size:15.5px;font-weight:800;color:var(--orange-2);letter-spacing:-.01em}
@@ -405,7 +427,7 @@ function renderChrome() {
   }).join('');
   $('#sfoot').innerHTML = 'Masuk sebagai<b>' + esc(App.site.code) + (App.site.name ? ' · ' + esc(App.site.name) : '') + '</b>'
     + '<button class="btn sm block" id="sOut">Keluar</button>';
-  var TT = { home: 'Beranda', jalan: 'Promo hari ini', kalender: 'Kalender promo', semua: 'Semua promo', memo: 'Memo & update', artikel: 'List artikel', akun: 'Toko online' };
+  var TT = { home: 'Beranda', jalan: 'Promo hari ini', kalender: 'Kalender promo', semua: 'Semua promo', memo: 'Memo & update', artikel: 'List artikel', cek: 'Cek stok promo', akun: 'Toko online' };
   $('#tbTitle').innerHTML = esc(TT[App.view] || 'Beranda') + '<small>' + esc(App.site.code + ' · ' + (App.site.name || '')) + '</small>';
   $('#tbOnline').innerHTML = svg('users') + (live ? '<span class="bd">' + live + '</span>' : '');
   $('#tbOut').innerHTML = svg('out');
@@ -744,20 +766,23 @@ function vCek() {
     if (f.q) { var q = f.q.toLowerCase(); if ((x.it.sku + ' ' + x.it.name + ' ' + x.it.bins.map(function (b) { return b.bin; }).join(' ')).toLowerCase().indexOf(q) < 0) return false; }
     return true;
   });
-  var lim = f.more ? rows.length : 80, TG = { disp: '<span class="tg ok">Terdisplay</span>', wh: '<span class="tg warm">Belum display</span>', dmg: '<span class="tg hot">Damage saja</span>', nol: '<span class="tg">Stok 0</span>' };
-  h += '<section class="panel"><div class="ph"><h2>Detail SKU</h2><span class="sub">' + rows.length + ' SKU</span></div>'
-    + '<div class="seg" style="margin-bottom:8px">' + [['', 'Semua'], ['wh', 'Belum display'], ['disp', 'Terdisplay'], ['dmg', 'Damage']].map(function (o) { return '<button data-cek="st:' + o[0] + '" class="' + (f.st === o[0] ? 'on' : '') + '">' + o[1] + '</button>'; }).join('') + '</div>'
-    + '<div class="cfil"><select class="inp" id="cekL" style="flex:0 1 220px"><option value="">Semua list</option>' + C.lists.map(function (l, i) { return '<option value="' + i + '"' + (String(f.li) === String(i) ? ' selected' : '') + '>' + esc(l.name) + '</option>'; }).join('') + '</select>'
-    + '<input class="inp" id="cekQ" type="search" placeholder="Cari SKU, nama, atau bin…" value="' + esc(f.q) + '"></div>'
-    + rows.slice(0, lim).map(function (x) {
+  var rowHtml = function (x) {
         var it = x.it;
         return '<div class="crow' + (App.data.foto ? ' hasf' : '') + '">' + fotoThumb(it.gen + '.' + it.color, it.base || it.name, it.sku + (it.color ? ' · ' + it.color : '') + (it.size ? ' · ' + it.size : ''), priceTxtPlain(x.pr)) + '<div><b>' + esc(it.base || it.name) + '</b><div class="sub">' + esc(it.sku) + (it.color ? ' · ' + esc(it.color) : '') + (it.size ? ' · ' + esc(it.size) : '') + '</div>'
           + priceBlock(x.pr)
           + '<div class="lc">' + x.hits.map(function (hh) { var l = C.lists[hh[0]], r = l.rows[hh[1]]; var PX = window.Artikel.listPriceCols(l), inf = l.cols.map(function (c, k) { if (k === PX.dc || k === PX.pc || k === PX.ppc) return ''; var v = r[k + 2]; return v === '' || v == null ? '' : c + ' ' + fmtInfo(c, v); }).filter(Boolean).slice(0, 2).join(' · '); return '<span>' + esc(l.name) + (inf ? ' · ' + esc(inf) : '') + '</span>'; }).join('') + '</div>'
           + '<div class="bins">' + it.bins.map(function (b) { return esc(b.bin) + '·' + b.qty; }).join('  ') + '</div></div>'
           + '<div class="q"><div>Display<b>' + it.disp + '</b></div><div>Gudang<b>' + it.wh + '</b></div>' + (it.dmg ? '<div>Damage<b>' + it.dmg + '</b></div>' : '') + TG[x.st] + '</div></div>';
-      }).join('')
-    + (rows.length > lim ? '<button class="btn block" data-cek="more" style="margin-top:12px">Tampilkan semua (' + rows.length + ')</button>' : '')
+  };
+  var view = f.view || 'mc', lim = f.more ? rows.length : 80, TG = { disp: '<span class="tg ok">Terdisplay</span>', wh: '<span class="tg warm">Belum display</span>', dmg: '<span class="tg hot">Damage saja</span>', nol: '<span class="tg">Stok 0</span>' };
+  h += '<section class="panel"><div class="ph"><h2>Detail SKU</h2><span class="sub">' + rows.length + ' SKU</span></div>'
+    + '<div class="mcbar"><div class="seg">' + [['mc', 'Kelompok MC'], ['list', 'Daftar']].map(function (o) { return '<button data-cek="view:' + o[0] + '" class="' + (view === o[0] ? 'on' : '') + '">' + o[1] + '</button>'; }).join('') + '</div>'
+    + (view === 'mc' ? '<span class="mcact"><button class="btn sm" data-cek="open:1">Buka semua</button><button class="btn sm" data-cek="open:0">Tutup semua</button></span>' : '') + '</div>'
+    + '<div class="seg" style="margin-bottom:8px">' + [['', 'Semua'], ['wh', 'Belum display'], ['disp', 'Terdisplay'], ['dmg', 'Damage']].map(function (o) { return '<button data-cek="st:' + o[0] + '" class="' + (f.st === o[0] ? 'on' : '') + '">' + o[1] + '</button>'; }).join('') + '</div>'
+    + '<div class="cfil"><select class="inp" id="cekL" style="flex:0 1 220px"><option value="">Semua list</option>' + C.lists.map(function (l, i) { return '<option value="' + i + '"' + (String(f.li) === String(i) ? ' selected' : '') + '>' + esc(l.name) + '</option>'; }).join('') + '</select>'
+    + '<input class="inp" id="cekQ" type="search" placeholder="Cari SKU, nama, atau bin…" value="' + esc(f.q) + '"></div>'
+    + (view === 'mc' ? mcTree(rows, rowHtml) : rows.slice(0, lim).map(rowHtml).join(''))
+    + (view !== 'mc' && rows.length > lim ? '<button class="btn block" data-cek="more" style="margin-top:12px">Tampilkan semua (' + rows.length + ')</button>' : '')
     + (rows.length ? '' : '<div class="empty" style="margin-top:8px">Tidak ada SKU yang cocok dengan filter.</div>') + '</section>';
   return h;
 }
@@ -775,7 +800,7 @@ async function readCek(f) {
     window.Artikel.attachPrices(R, lists, null);
     if (R.found.some(function (x) { return x.pr && !x.pr.normal; })) setTimeout(function () { fillKatalog(R, lists); }, 80);
     App.cek = { month: m, file: f.name, stock: stock, lists: lists, R: R, at: new Date().toLocaleString('id-ID') };
-    App.cekF = { st: '', li: '', q: '', more: 0 };
+    App.cekF = { st: '', li: '', q: '', more: 0, view: 'mc' }; App.cekOpen = {}; App.cekAll = undefined;
     setTimeout(function () { loadFotoFor(R.found.map(function (x) { return x.it.gen + '.' + x.it.color; })); }, 50);
     render();
     toast(R.tot.sku + ' SKU promo ditemukan di stok toko.');
@@ -790,6 +815,8 @@ document.addEventListener('click', function (e) {
   var k = c.dataset.cek, F = App.cekF, y = window.scrollY;
   if (k === 'export') { window.Artikel.needXLSX().then(function () { var C = App.cek; var fn = window.Artikel.exportResult(C.R, C.stock, C.lists, { site: App.site.code + ' ' + (App.site.name || ''), monthLabel: fmtMonth(C.month), month: C.month, file: C.file, at: C.at }); toast('Tersimpan: ' + fn); }); return; }
   if (k === 'more') F.more = 1;
+  else if (k.indexOf('view:') === 0) { F.view = k.slice(5); F.more = 0; }
+  else if (k.indexOf('open:') === 0) { App.cekOpen = {}; App.cekAll = k.slice(5) === '1'; }
   else if (k.indexOf('st:') === 0) { F.st = k.slice(3); F.more = 0; }
   else if (k.indexOf('li:') === 0) { F.li = k.slice(3); F.more = 0; F.st = ''; render(); var d = $('#cekL'); if (d) d.closest('.panel').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
   render(); window.scrollTo(0, y);
@@ -900,6 +927,44 @@ function fillKatalog(R, lists) {
     }
   });
 }
+
+/* ===================================================== kelompok MC Lv2 › Lv3 › Lv4 */
+function mcName(v) { v = String(v == null ? '' : v).trim(); return !v || v === '-' || /^\d+$/.test(v) ? 'Tanpa MC' : v; }
+function mcSort(a, b) { return (a === 'Tanpa MC') - (b === 'Tanpa MC') || a.localeCompare(b, 'id'); }
+function mcTree(rows, rowHtml) {
+  if (!rows.length) return '';
+  var T = {}, node = function () { return { n: 0, d: 0, w: 0, b: 0, ch: {}, rows: [] }; };
+  var add = function (o, x) { o.n++; o.d += x.it.disp; o.w += x.it.wh; if (x.st === 'wh') o.b++; };
+  rows.forEach(function (x) {
+    var a = mcName(x.it.mc2), b = mcName(x.it.mc3), c = mcName(x.it.mc4);
+    var A = T[a] = T[a] || node(), B = A.ch[b] = A.ch[b] || node(), C = B.ch[c] = B.ch[c] || node();
+    add(A, x); add(B, x); add(C, x); C.rows.push(x);
+  });
+  var O = App.cekOpen || (App.cekOpen = {}), all = App.cekAll, def = rows.length <= 25 || !!(App.cekF && App.cekF.q);
+  var open = function (p) { return O[p] !== undefined ? O[p] : all !== undefined ? all : def; };
+  var sum = function (name, o) {
+    return '<span class="mn">' + esc(name) + '</span><span class="ms">' + o.n + ' SKU · display ' + o.d + ' · gudang ' + o.w + '</span>'
+      + (o.b ? '<span class="mb">' + o.b + ' belum display</span>' : '<span class="mb ok">semua terdisplay</span>');
+  };
+  return Object.keys(T).sort(mcSort).map(function (a) {
+    var A = T[a], pa = a;
+    return '<details class="mcg mc1" data-mc="' + esc(pa) + '"' + (open(pa) ? ' open' : '') + '><summary>' + sum(a, A) + '</summary>'
+      + Object.keys(A.ch).sort(mcSort).map(function (b) {
+          var B = A.ch[b], pb = a + '|' + b;
+          return '<details class="mcg mc2" data-mc="' + esc(pb) + '"' + (open(pb) ? ' open' : '') + '><summary>' + sum(b, B) + '</summary>'
+            + Object.keys(B.ch).sort(mcSort).map(function (c) {
+                var C = B.ch[c], pc = pb + '|' + c;
+                return '<details class="mcg mc3" data-mc="' + esc(pc) + '"' + (open(pc) ? ' open' : '') + '><summary>' + sum(c, C) + '</summary>'
+                  + '<div class="mcrows">' + C.rows.map(rowHtml).join('') + '</div></details>';
+              }).join('') + '</details>';
+        }).join('') + '</details>';
+  }).join('');
+}
+/* simpan status buka/tutup supaya tidak hilang saat filter, foto, atau harga dimuat ulang */
+document.addEventListener('toggle', function (e) {
+  var d = e.target; if (!d || !d.dataset || d.dataset.mc == null) return;
+  (App.cekOpen || (App.cekOpen = {}))[d.dataset.mc] = d.open;
+}, true);
 
 (function init() {
   if (!/^https:\/\/script\.google(usercontent)?\.com\//.test(CFG.API || '') || /GANTI_DENGAN/.test(CFG.API)) {
