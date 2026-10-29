@@ -42,6 +42,15 @@
     'materialcode', 'material', 'itemcode', 'kodebarang', 'plu', 'barcode', 'kode', 'code'];
   var NAME_H = ['articledescription', 'skuname', 'namasku', 'namaartikel', 'articlename', 'namabarang', 'namaproduk', 'productname', 'itemname', 'description', 'deskripsi', 'nama', 'name'];
   var COLOR_H = ['warna', 'color', 'colour', 'kodewarna', 'colorcode'];
+  /* kolom harga & diskon dikenali dari judulnya (huruf kecil tanpa spasi/simbol) */
+  var PPRICE_RE = /^(hargapromo|promoprice|hargadiskon|hargadisc|discprice|discountprice|hargaakhir|hargasetelah|netprice|nettprice|hargafinal|finalprice|specialprice|hargaspesial|hargajualpromo|hargapromosi|aftersdisc|afterdisc)/;
+  var NPRICE_RE = /^(harganormal|normalprice|retailprice|hargaretail|srp|rsp|rrp|retail|price|harga|hargajual|hargaawal|originalprice|hargaasli|hargabarang|hargasatuan|unitprice|hargaitem)$|^(harganormal|normalprice|retailprice|hargaretail)/;
+  var DISC_RE = /^(disc|diskon|discount|potongan|persen|percent|pct)|(disc|diskon|discount)$/;
+  function detectPriceCols(headers, skip) {
+    var h = headers.map(normH), ok = function (i) { return !skip || skip.indexOf(i) < 0; }, f = function (re, not) { for (var i = 0; i < h.length; i++) if (ok(i) && h[i] && re.test(h[i]) && (!not || not.indexOf(i) < 0)) return i; return -1; };
+    var ppc = f(PPRICE_RE), pc = f(NPRICE_RE, [ppc]), dc = f(DISC_RE, [ppc, pc]);
+    return { dc: dc, pc: pc, ppc: ppc };
+  }
   var INFO_RE = /disc|diskon|potongan|harga|price|normal|net|promo|warna|color|size|ukuran|mc|kategori|category|gender|brand|keterangan|remark|status|qty|stok/;
 
   function findHeader(aoa) {
@@ -78,7 +87,9 @@
       hdr.forEach(function (h, i) { if (!skipCol(i) && INFO_RE.test(nh[i])) info.push(i); });
       hdr.forEach(function (h, i) { if (info.length < 6 && !skipCol(i) && info.indexOf(i) < 0 && coded.some(function (r) { return tx(r[i]); })) info.push(i); });
       info = info.slice(0, 8).sort(function (a, b) { return a - b; });
-      out.push({ sheet: sn, headers: hdr, hdrRow: H.row, codeCol: H.code, nameCol: nameCol, colorCol: colorCol, infoCols: info, body: body, count: coded.length });
+      var PC = detectPriceCols(hdr, [H.code, nameCol, colorCol]);
+      out.push({ sheet: sn, headers: hdr, hdrRow: H.row, codeCol: H.code, nameCol: nameCol, colorCol: colorCol, infoCols: info, body: body, count: coded.length,
+        discCol: PC.dc, priceCol: PC.pc, ppriceCol: PC.ppc, dfix: '' });
     });
     return out;
   }
@@ -89,15 +100,64 @@
   }
   /* sheet terbaca → list siap simpan: rows = [kode, nama, info...] */
   function buildList(S, name, promoId) {
-    var seen = {}, rows = [];
+    var seen = {}, rows = [], cols = S.infoCols.slice();
+    [S.discCol, S.priceCol, S.ppriceCol].forEach(function (c) { if (c != null && c >= 0 && cols.indexOf(c) < 0 && c !== S.codeCol && c !== S.nameCol) cols.push(c); });
+    cols.sort(function (a, b) { return a - b; });
     S.body.forEach(function (r) {
       var code = normCode(r[S.codeCol]); if (!/^\d{9,13}/.test(code)) return;
       var col = S.colorCol >= 0 ? tx(r[S.colorCol]).toUpperCase() : '';
       if (/^\d{9}$/.test(code) && /^[A-Z]{2,4}$/.test(col)) code = code + '.' + col;
       if (seen[code]) return; seen[code] = 1;
-      rows.push([code, S.nameCol >= 0 ? tx(r[S.nameCol]) : ''].concat(S.infoCols.map(function (i) { return cellOut(r[i]); })));
+      rows.push([code, S.nameCol >= 0 ? tx(r[S.nameCol]) : ''].concat(cols.map(function (i) { return cellOut(r[i]); })));
     });
-    return { name: name || S.sheet, sheet: S.sheet, promoId: promoId || '', cols: S.infoCols.map(function (i) { return S.headers[i]; }), rows: rows };
+    var at = function (c) { return c >= 0 ? cols.indexOf(c) : -1; };
+    return { name: name || S.sheet, sheet: S.sheet, promoId: promoId || '', cols: cols.map(function (i) { return S.headers[i]; }), rows: rows,
+      dc: at(S.discCol), pc: at(S.priceCol), ppc: at(S.ppriceCol), dfix: parseDisc(S.dfix) || 0 };
+  }
+  function parseMoney(v) {
+    if (typeof v === 'number') return v > 0 ? Math.round(v) : 0;
+    var s = String(v == null ? '' : v).replace(/rp\.?/ig, '').replace(/\s/g, '');
+    if (!s) return 0;
+    if (/^\d{1,3}([.,]\d{3})+([.,]\d{1,2})?$/.test(s)) s = s.replace(/[.,]\d{1,2}$/, function (m) { return m.length === 4 ? m : ''; }).replace(/[.,]/g, '');
+    var n = parseFloat(s.replace(',', '.'));
+    return isNaN(n) || n <= 0 ? 0 : Math.round(n);
+  }
+  /* 0.5 → 50 · "50%" → 50 · 50 → 50 · "Disc 30%" → 30 */
+  function parseDisc(v) {
+    if (v == null || v === '') return 0;
+    if (typeof v === 'number') { var x = v > 0 && v <= 1 ? v * 100 : v; return x > 0 && x < 100 ? Math.round(x * 10) / 10 : 0; }
+    var str = String(v), m = str.replace(',', '.').match(/(\d+(?:\.\d+)?)/);
+    if (!m) return 0;
+    var n = +m[1]; if (n > 0 && n <= 1 && str.indexOf('%') < 0) n *= 100;
+    return n > 0 && n < 100 ? Math.round(n * 10) / 10 : 0;
+  }
+  var r100 = function (x) { return Math.round(x / 100) * 100; };
+  function listPriceCols(l) {
+    if (l._pcx) return l._pcx;
+    var P = l.dc != null ? { dc: l.dc, pc: l.pc, ppc: l.ppc } : detectPriceCols(l.cols || []);   // list lama: ditebak dari judul kolom
+    return (l._pcx = P);
+  }
+  /* diskon & harga untuk satu baris list. normal = harga normal, promo = harga setelah diskon */
+  function priceOf(l, r, katNormal) {
+    var P = listPriceCols(l), d = P.dc >= 0 ? parseDisc(r[P.dc + 2]) : 0, n = P.pc >= 0 ? parseMoney(r[P.pc + 2]) : 0, pp = P.ppc >= 0 ? parseMoney(r[P.ppc + 2]) : 0, src = n ? 'list' : '';
+    if (!d && l.dfix) d = +l.dfix;
+    if (!n && katNormal) { n = katNormal; src = 'katalog'; }
+    if (n && pp && !d && pp < n) d = Math.round((1 - pp / n) * 1000) / 10;
+    if (n && d && !pp) pp = r100(n * (1 - d / 100));
+    if (pp && n && pp >= n) pp = 0;
+    return { disc: d, normal: n, promo: pp, src: src };
+  }
+  /* harga terbaik per SKU di hasil cek (diskon terbesar di antara list yang cocok) */
+  function attachPrices(R, lists, katFn) {
+    R.found.forEach(function (x) {
+      var kn = katFn ? katFn(x.it) : 0, best = null;
+      x.hits.forEach(function (h) {
+        var l = lists[h[0]], p = priceOf(l, l.rows[h[1]], kn); p.list = l.name;
+        if (!best || p.disc > best.disc || (p.disc === best.disc && p.promo && !best.promo)) best = p;
+      });
+      x.pr = best;
+    });
+    return R;
   }
   function keyStats(rows) {
     var s = { S: 0, G: 0, GC: 0 };
@@ -178,9 +238,9 @@
       ['List artikel', 'Artikel di list', 'SKU ada di toko', 'Pcs display', 'Pcs gudang', 'Pcs damage', 'SKU belum display', 'Kode list tanpa stok']]
       .concat(R.per.map(function (p) { return [p.name, p.listN, p.sku, p.disp, p.wh, p.dmg, p.belum, p.kosong]; }))
       .concat([['TOTAL', '', R.tot.sku, R.tot.disp, R.tot.wh, R.tot.dmg, R.tot.belum, '']]), 'Ringkasan', [34, 16, 16, 12, 12, 12, 18, 20]);
-    var base = ['SKU', 'Generic', 'Nama', 'Warna', 'Size', 'MC Lv2', 'MC Lv3', 'MC Lv4', 'Display', 'Gudang', 'Damage', 'Lainnya', 'Total', 'Status', 'Bin'];
-    var rowOf = function (x) { var i = x.it; return [i.sku, i.gen, i.base, i.color, i.size, i.mc2, i.mc3, i.mc4, i.disp, i.wh, i.dmg, i.oth, i.disp + i.wh + i.dmg + i.oth, ST_TXT[x.st], i.bins.map(function (b) { return b.bin + ' (' + b.qty + ')'; }).join(', ')]; };
-    add([['List'].concat(base)].concat(R.found.map(function (x) { return [x.hits.map(function (h) { return lists[h[0]].name; }).join(' | ')].concat(rowOf(x)); })), 'Semua SKU promo', [24, 14, 11, 34, 7, 8, 14, 14, 16, 8, 8, 8, 8, 8, 22, 40]);
+    var base = ['SKU', 'Generic', 'Nama', 'Warna', 'Size', 'Harga normal', 'Diskon %', 'Harga promo', 'MC Lv2', 'MC Lv3', 'MC Lv4', 'Display', 'Gudang', 'Damage', 'Lainnya', 'Total', 'Status', 'Bin'];
+    var rowOf = function (x) { var i = x.it, p = x.pr || {}; return [i.sku, i.gen, i.base, i.color, i.size, p.normal || '', p.disc || '', p.promo || '', i.mc2, i.mc3, i.mc4, i.disp, i.wh, i.dmg, i.oth, i.disp + i.wh + i.dmg + i.oth, ST_TXT[x.st], i.bins.map(function (b) { return b.bin + ' (' + b.qty + ')'; }).join(', ')]; };
+    add([['List'].concat(base)].concat(R.found.map(function (x) { return [x.hits.map(function (h) { return lists[h[0]].name; }).join(' | ')].concat(rowOf(x)); })), 'Semua SKU promo', [24, 14, 11, 34, 7, 8, 13, 9, 13, 14, 14, 16, 8, 8, 8, 8, 8, 22, 40]);
     var pb = [['List', 'SKU', 'Nama', 'Bin', 'Zona', 'Qty']];
     R.found.forEach(function (x) { x.it.bins.forEach(function (b) { pb.push([lists[x.hits[0][0]].name, x.it.sku, x.it.name, b.bin, b.zone, b.qty]); }); });
     add(pb, 'Per bin', [24, 14, 40, 14, 12, 7]);
@@ -202,5 +262,5 @@
   }
 
   window.Artikel = { needXLSX: needXLSX, readListSheets: readListSheets, buildList: buildList, keyStats: keyStats, keyOf: keyOf,
-    readByBin: readByBin, match: match, exportResult: exportResult, exportList: exportList, ST_TXT: ST_TXT };
+    readByBin: readByBin, match: match, priceOf: priceOf, attachPrices: attachPrices, listPriceCols: listPriceCols, parseDisc: parseDisc, parseMoney: parseMoney, exportResult: exportResult, exportList: exportList, ST_TXT: ST_TXT };
 })();
