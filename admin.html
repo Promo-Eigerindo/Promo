@@ -71,7 +71,7 @@ textarea.inp{min-height:80px;resize:vertical}
     <div class="err" id="aErr"></div>
     <button type="button" class="btn sm" id="aTest" style="margin-top:4px">Tes koneksi server</button>
     <div class="small muted" id="aTestOut" style="margin-top:8px;line-height:1.5"></div>
-    <div class="small muted" style="margin-top:10px">Versi halaman: 6</div>
+    <div class="small muted" style="margin-top:10px">Versi halaman: 7</div>
   </form>
 </div>
 
@@ -98,6 +98,7 @@ textarea.inp{min-height:80px;resize:vertical}
 <script src="config.js"></script>
 <script src="icons.js"></script>
 <script src="parse.js"></script>
+<script src="artikel.js"></script>
 <script>
 'use strict';
 var CFG = window.PROMO_CFG || {};
@@ -209,8 +210,9 @@ function boot() {
 
 /* ----------------------------------------------------------- render */
 var ANAV = [['home', 'Beranda', 'home'], ['promo', 'Promo', 'list'], ['terbit', 'Unggah', 'upload'], ['toko', 'Toko', 'store'], ['aktif', 'Aktivitas', 'history']];
-var ASNAV = [['home', 'Beranda', 'home'], ['terbit', 'Unggah juknis', 'upload', 'cta'], ['promo', 'Promo tersimpan', 'list'], ['toko', 'Daftar toko', 'store'], ['aktif', 'Toko online & log', 'users']];
+var ASNAV = [['home', 'Beranda', 'home'], ['terbit', 'Unggah juknis', 'upload', 'cta'], ['promo', 'Promo tersimpan', 'list'], ['artikel', 'List artikel promo', 'sheet'], ['toko', 'Daftar toko', 'store'], ['aktif', 'Toko online & log', 'users']];
 var TITLES = { terbit: ['Unggah & terbitkan', 'Baca juknis, koreksi, lalu terbitkan ke seluruh toko'], promo: ['Promo tersimpan', 'Versi yang sedang dilihat toko'],
+  artikel: ['List artikel promo', 'Excel list artikel per bulan, dipakai toko untuk cek stok promo'],
   toko: ['Daftar toko', 'Hanya No Site di sini yang bisa masuk'], aktif: ['Toko online & riwayat', 'Siapa yang sedang membuka halaman promo'] };
 function goA(v) { A.tab = v; var h = '#' + v; if (location.hash !== h) history.pushState(null, '', h); closeOv(); render(); window.scrollTo(0, 0); }
 window.addEventListener('popstate', function () { var v = (location.hash || '').slice(1); if (TITLES[v] || v === 'home') { A.tab = v; closeOv(); if (A.data) render(); } });
@@ -237,7 +239,7 @@ function render() {
   var v = $('#view');
   if (A.tab === 'home' || !TITLES[A.tab]) { A.tab = 'home'; v.innerHTML = viewHome(); return; }
   var T = TITLES[A.tab];
-  var body = A.tab === 'terbit' ? viewTerbit() : A.tab === 'promo' ? viewPromo() : A.tab === 'toko' ? viewToko() : viewAktif();
+  var body = A.tab === 'terbit' ? viewTerbit() : A.tab === 'promo' ? viewPromo() : A.tab === 'artikel' ? viewArtA() : A.tab === 'toko' ? viewToko() : viewAktif();
   v.innerHTML = '<section class="sheet"><div class="pagehead" style="margin:0"><button class="back" data-go="home" aria-label="Kembali">' + svg('back') + '</button>'
     + '<div><h1>' + T[0] + '</h1><p>' + T[1] + '</p></div></div></section>' + body;
   if (A.tab === 'aktif') loadLog();
@@ -245,7 +247,7 @@ function render() {
 var ATILES = [['terbit', 'Unggah juknis', 'upload', '#E46F3F', '#FDF0EA'], ['promo', 'Promo tersimpan', 'list', '#0F3192', '#EEF2FB'],
   ['toko', 'Daftar toko', 'store', '#107C41', '#E7F4EC'], ['tpl', 'Template toko', 'download', '#7A4FB5', '#F1EBFA'],
   ['aktif', 'Toko online', 'users', '#1B47C2', '#E6EDFC'], ['log', 'Riwayat', 'history', '#5A6482', '#EEF1F6'],
-  ['site', 'Halaman toko', 'ext', '#13806F', '#E3F4F0'], ['reload', 'Muat ulang', 'refresh', '#C9531F', '#FDF0EA']];
+  ['site', 'Halaman toko', 'ext', '#13806F', '#E3F4F0'], ['artikel', 'List artikel', 'sheet', '#C9531F', '#FDF0EA']];
 function viewHome() {
   var ms = A.data.months, last = ms[ms.length - 1], live = liveA();
   var lp = last ? A.data.promos.filter(function (p) { return p.month === last; }).length : 0;
@@ -771,6 +773,127 @@ document.addEventListener('keydown', function (e) {
   if (e.key === 'Escape') closeOv();
   if (e.key === 'Enter' && e.target && (e.target.id === 'aPw' || e.target.id === 'aName')) { e.preventDefault(); login(); }
 });
+
+/* ===================================================== list artikel promo */
+function nextMonth(m) { var a = m.split('-').map(Number), d = new Date(a[0], a[1], 1); return d.getFullYear() + '-' + pad(d.getMonth() + 1); }
+function artMonths() {
+  var ms = A.data.months.slice(), t = todayISO().slice(0, 7);
+  [t, nextMonth(t)].forEach(function (m) { if (ms.indexOf(m) < 0) ms.push(m); });
+  return ms.sort();
+}
+var STOPW = ['promo', 'selected', 'list', 'artikel', 'article', 'sheet', 'disc', 'diskon', 'item', 'items', 'all', 'the', 'dan', 'untuk', 'upto'];
+function guessPromo(name, promos) {
+  var tk = String(name).toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(' ').filter(function (w) { return w.length >= 3 && STOPW.indexOf(w) < 0; });
+  var best = '', bs = 0;
+  promos.forEach(function (p) { var t = p.title.toLowerCase(), sc = tk.filter(function (w) { return t.indexOf(w) >= 0; }).length; if (sc > bs) { bs = sc; best = p.id; } });
+  return best;
+}
+function viewArtA() {
+  var ms = artMonths();
+  if (!A.artM || ms.indexOf(A.artM) < 0) A.artM = A.data.months.length ? A.data.months[A.data.months.length - 1] : ms[0];
+  var m = A.artM, B = A.data.bulan[m] || {}, meta = B.artikel, promos = A.data.promos.filter(function (p) { return p.month === m; });
+  var ptitle = function (id) { var p = promos.filter(function (x) { return x.id === id; })[0]; return p ? p.title : ''; };
+  var h = '<div class="card"><h2>Bulan</h2><p class="lead">List artikel disimpan per bulan. Toko memakai list bulan ini untuk mencocokkan stoknya.</p>'
+    + '<label class="fl" style="max-width:280px">Bulan promo<select class="inp" id="artM">' + ms.slice().reverse().map(function (x) { return '<option value="' + x + '"' + (x === m ? ' selected' : '') + '>' + fmtMonth(x) + '</option>'; }).join('') + '</select></label>';
+  if (meta && meta.lists && meta.lists.length) {
+    h += '<div class="tbl-wrap" style="max-height:none"><table class="tbl"><thead><tr><th>List</th><th>Artikel</th><th>Dikaitkan ke promo</th><th>Kolom info</th></tr></thead><tbody>'
+      + meta.lists.map(function (l) { return '<tr><td><b>' + esc(l.name) + '</b></td><td>' + l.n + '</td><td class="small">' + (l.promoId ? esc(ptitle(l.promoId) || '(promo sudah tidak ada)') : '<span class="muted">tidak dikaitkan</span>') + '</td><td class="small muted">' + esc((l.cols || []).join(', ')) + '</td></tr>'; }).join('')
+      + '</tbody></table></div><p class="small muted" style="margin:8px 0 0">Diunggah ' + esc(String(meta.at || '').slice(0, 16).replace('T', ' ')) + ' oleh ' + esc(meta.by || '') + (meta.file ? ' · ' + esc(meta.file) : '') + '</p>'
+      + '<div class="row-act"><button class="btn sm" data-act="artDl">Unduh list (Excel)</button><button class="btn sm danger" data-act="artDel">Hapus list bulan ini</button></div>';
+  } else h += '<div class="empty">Belum ada list artikel untuk ' + fmtMonth(m) + '.</div>';
+  h += '</div>';
+  h += '<div class="card"><h2>Unggah Excel list artikel</h2><p class="lead">Satu file boleh berisi banyak sheet (mis. DCNP, SMDS, Outlive). Tiap sheet menjadi satu list. Kolom kode dikenali otomatis: SKU 12 digit dicocokkan persis, kode artikel 9 digit mencakup semua warna & ukuran, dan bila ada kolom Warna, hanya warna itu.</p>'
+    + '<label class="drop" id="dropArt"><input type="file" id="artFile" accept=".xlsx,.xls"><b>Pilih file Excel list artikel</b><span class="small muted">atau seret ke sini · untuk bulan ' + fmtMonth(m) + '</span></label>'
+    + '<div id="artStat" class="small muted" style="margin-top:10px"></div></div>';
+  var W = A.artW;
+  if (W) {
+    var inc = W.sheets.filter(function (S) { return !S.skip && S.on; });
+    var nRows = 0; inc.forEach(function (S) { nRows += A_build(S).rows.length; });
+    h += '<div class="card" style="border-left:5px solid var(--orange)"><h2>Periksa sebelum disimpan</h2><p class="lead">' + esc(W.file) + ' · ' + W.sheets.length + ' sheet · ' + inc.length + ' dipakai · ' + nRows + ' artikel · untuk ' + fmtMonth(m)
+      + (meta && meta.lists ? ' · <b>menggantikan list ' + fmtMonth(m) + ' yang sekarang</b>' : '') + '</p>'
+      + (promos.length ? '' : '<div class="note">Juknis ' + fmtMonth(m) + ' belum terbit, jadi list belum bisa dikaitkan ke promo. List tetap bisa dipakai toko untuk cek stok.</div>')
+      + W.sheets.map(function (S, i) { return S.skip ? '<div class="pi" style="--c:var(--line-2);opacity:.7"><div class="m"><b>' + esc(S.sheet) + '</b><span class="meta">dilewati: ' + esc(S.reason) + '</span></div></div>' : sheetCard(S, i, promos); }).join('')
+      + '<div class="row-act"><button class="btn primary" data-act="artSave">Simpan list artikel</button><button class="btn" data-act="artCancel">Batalkan</button></div></div>';
+  }
+  return h;
+}
+function A_build(S) { return window.Artikel.buildList(S, S.name, S.promoId); }
+function sheetCard(S, i, promos) {
+  var L = A_build(S), ks = window.Artikel.keyStats(L.rows);
+  var opt = function (sel, allowNone) { return (allowNone ? '<option value="-1">(tidak ada)</option>' : '') + S.headers.map(function (hd, c) { return '<option value="' + c + '"' + (c === sel ? ' selected' : '') + '>' + esc(hd) + '</option>'; }).join(''); };
+  var kt = [ks.S ? ks.S + ' SKU' : '', ks.G ? ks.G + ' artikel (semua warna)' : '', ks.GC ? ks.GC + ' artikel+warna' : ''].filter(Boolean).join(' · ');
+  return '<div class="fs" style="' + (S.on ? '' : 'opacity:.55') + '"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">'
+    + '<label class="small" style="display:flex;gap:6px;align-items:center;font-weight:800"><input type="checkbox" data-aw="on|' + i + '"' + (S.on ? ' checked' : '') + '> Sheet “' + esc(S.sheet) + '”</label>'
+    + '<span class="small muted">' + L.rows.length + ' artikel' + (kt ? ' · ' + kt : '') + '</span></div>'
+    + '<div class="g2">'
+    + '<label class="fl">Nama list<input class="inp" data-aw="name|' + i + '" value="' + esc(S.name) + '"></label>'
+    + '<label class="fl">Kaitkan ke promo<select class="inp" data-aw="promo|' + i + '"><option value="">(tidak dikaitkan)</option>' + promos.map(function (p) { return '<option value="' + esc(p.id) + '"' + (p.id === S.promoId ? ' selected' : '') + '>' + esc(p.cat + ' · ' + p.title) + '</option>'; }).join('') + '</select></label>'
+    + '<label class="fl">Kolom kode<select class="inp" data-aw="code|' + i + '">' + opt(S.codeCol) + '</select></label>'
+    + '<label class="fl">Kolom nama<select class="inp" data-aw="ncol|' + i + '">' + opt(S.nameCol, true) + '</select></label>'
+    + '<label class="fl">Kolom warna (opsional)<select class="inp" data-aw="ccol|' + i + '">' + opt(S.colorCol, true) + '</select></label>'
+    + '</div><div class="small" style="font-weight:700;margin:2px 0 6px">Kolom info yang ikut ditampilkan ke toko</div><div style="display:flex;flex-wrap:wrap;gap:6px 12px;margin-bottom:10px">'
+    + S.headers.map(function (hd, c) { if (c === S.codeCol || c === S.nameCol || c === S.colorCol) return ''; return '<label class="small" style="display:flex;gap:5px;align-items:center"><input type="checkbox" data-aw="info|' + i + '|' + c + '"' + (S.infoCols.indexOf(c) >= 0 ? ' checked' : '') + '>' + esc(hd) + '</label>'; }).join('')
+    + '</div><div class="tbl-wrap" style="max-height:200px"><table class="tbl"><thead><tr><th>Kode</th><th>Nama</th>' + L.cols.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + '</tr></thead><tbody>'
+    + L.rows.slice(0, 5).map(function (r) { return '<tr>' + r.map(function (v) { return '<td class="small">' + esc(v) + '</td>'; }).join('') + '</tr>'; }).join('')
+    + (L.rows.length ? '' : '<tr><td colspan="9" class="small" style="color:var(--bad)">Tidak ada kode 9–13 digit di kolom ini. Pilih kolom kode yang benar.</td></tr>')
+    + '</tbody></table></div></div>';
+}
+async function artReadFile(f) {
+  var st = $('#artStat'); if (st) st.innerHTML = '<span class="spin"></span>Membaca ' + esc(f.name) + '…';
+  try {
+    if (!(await window.Artikel.needXLSX())) throw new Error('Pembaca Excel gagal dimuat. Cek koneksi internet.');
+    var wb = window.XLSX.read(await f.arrayBuffer(), { type: 'array', cellDates: true });
+    var sheets = window.Artikel.readListSheets(wb), promos = A.data.promos.filter(function (p) { return p.month === A.artM; });
+    if (!sheets.some(function (S) { return !S.skip; })) throw new Error('Tidak ada sheet berisi kode artikel/SKU (9–13 digit) di file ini.');
+    sheets.forEach(function (S) { if (S.skip) return; S.on = S.count > 0; S.name = S.sheet; S.promoId = guessPromo(S.sheet, promos); });
+    A.artW = { file: f.name, sheets: sheets };
+    render();
+  } catch (e) { if (st) st.innerHTML = '<span style="color:var(--bad)">' + esc(e.message || String(e)) + '</span>'; }
+}
+async function artSave() {
+  var W = A.artW; if (!W) return;
+  var lists = W.sheets.filter(function (S) { return !S.skip && S.on; }).map(A_build).filter(function (l) { return l.rows.length; });
+  if (!lists.length) { toast('Tidak ada sheet yang dipakai / berisi kode.'); return; }
+  var names = {}; for (var i = 0; i < lists.length; i++) { var k = lists[i].name.toLowerCase(); if (names[k]) { toast('Nama list “' + lists[i].name + '” dipakai dua kali.'); return; } names[k] = 1; }
+  var n = 0; lists.forEach(function (l) { n += l.rows.length; });
+  var B = A.data.bulan[A.artM] || {};
+  if (!confirm('Simpan ' + lists.length + ' list (' + n + ' artikel) untuk ' + fmtMonth(A.artM) + '?' + (B.artikel ? '\nList ' + fmtMonth(A.artM) + ' yang lama akan diganti.' : ''))) return;
+  toast('Menyimpan list artikel…', 15000);
+  try {
+    var r = await post({ a: 'artSave', month: A.artM, file: W.file, lists: lists });
+    A.data = normData(r.data); A.artW = null; render(); toast('List artikel ' + fmtMonth(A.artM) + ' tersimpan. Toko sudah bisa cek stok.');
+  } catch (e) { toast('Gagal menyimpan: ' + (e.message || e.code), 7000); }
+}
+document.addEventListener('click', async function (e) {
+  var b = e.target.closest && e.target.closest('[data-act]'); if (!b || A.tab !== 'artikel') return;
+  var k = b.dataset.act;
+  if (k === 'artSave') artSave();
+  else if (k === 'artCancel') { A.artW = null; render(); }
+  else if (k === 'artDel') {
+    if (!confirm('Hapus list artikel ' + fmtMonth(A.artM) + '? Toko tidak bisa cek stok untuk bulan ini sampai diunggah lagi.')) return;
+    try { var r = await post({ a: 'artDel', month: A.artM }); A.data = normData(r.data); render(); toast('List artikel dihapus.'); } catch (er) { toast('Gagal: ' + er.message); }
+  } else if (k === 'artDl') {
+    try { toast('Mengambil list…'); if (!(await window.Artikel.needXLSX())) throw new Error('Pembaca Excel gagal dimuat.'); var d = await api('art', { m: A.artM }); window.Artikel.exportList(d.lists || [], A.artM); } catch (er) { toast('Gagal: ' + er.message); }
+  }
+});
+document.addEventListener('change', function (e) {
+  var t = e.target;
+  if (t.id === 'artM') { A.artM = t.value; A.artW = null; render(); return; }
+  if (t.id === 'artFile' && t.files[0]) { artReadFile(t.files[0]); t.value = ''; return; }
+  var aw = t.dataset && t.dataset.aw; if (!aw || !A.artW) return;
+  var p = aw.split('|'), S = A.artW.sheets[+p[1]], y = window.scrollY;
+  if (p[0] === 'on') S.on = t.checked;
+  else if (p[0] === 'name') S.name = t.value.trim() || S.sheet;
+  else if (p[0] === 'promo') S.promoId = t.value;
+  else if (p[0] === 'code') S.codeCol = +t.value;
+  else if (p[0] === 'ncol') S.nameCol = +t.value;
+  else if (p[0] === 'ccol') S.colorCol = +t.value;
+  else if (p[0] === 'info') { var c = +p[2], ix = S.infoCols.indexOf(c); if (t.checked && ix < 0) S.infoCols.push(c); if (!t.checked && ix >= 0) S.infoCols.splice(ix, 1); S.infoCols.sort(function (a, b) { return a - b; }); }
+  if (p[0] !== 'name') { render(); window.scrollTo(0, y); }
+});
+document.addEventListener('dragover', function (e) { var d = e.target.closest && e.target.closest('#dropArt'); if (d) { e.preventDefault(); d.classList.add('over'); } });
+document.addEventListener('dragleave', function (e) { var d = e.target.closest && e.target.closest('#dropArt'); if (d) d.classList.remove('over'); });
+document.addEventListener('drop', function (e) { var d = e.target.closest && e.target.closest('#dropArt'); if (!d) return; e.preventDefault(); d.classList.remove('over'); if (e.dataTransfer.files[0]) artReadFile(e.dataTransfer.files[0]); });
 
 (function init() {
   if ((!/^https:\/\/script\.google(usercontent)?\.com\//.test(CFG.API || '') || /GANTI_DENGAN/.test(CFG.API))) {
