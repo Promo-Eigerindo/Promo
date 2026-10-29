@@ -139,6 +139,48 @@ table.gt{border-collapse:separate;border-spacing:0;font-size:11px;width:100%;min
 .kai b{display:block;font-size:13.5px;line-height:1.3;color:var(--ink)}
 .kai small{display:block;font-size:12px;color:var(--muted)}
 .kai .tg{flex:none}
+
+/* ---------- list artikel & cek stok ---------- */
+.xl .xb{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:11px 13px;color:var(--ink)}
+.xl .xb:hover,.xl .xb:focus-visible{border-color:var(--brand)}
+.drop{position:relative;display:grid;place-items:center;gap:4px;border:2px dashed var(--line-2);border-radius:18px;padding:26px 16px;text-align:center;cursor:pointer;background:var(--tint)}
+.drop:hover,.drop.over{border-color:var(--orange);background:var(--orange-tint)}
+.drop .di{width:52px;height:52px;border-radius:16px;background:#fff;color:var(--orange);display:grid;place-items:center;box-shadow:0 4px 12px rgba(11,27,74,.08);margin-bottom:6px}
+.drop .di svg{width:26px;height:26px}
+.drop b{font-size:15px;color:var(--brand)}
+.drop input{position:absolute;width:1px;height:1px;opacity:0}
+.note{background:var(--tint);border-left:4px solid var(--brand-3);border-radius:12px;padding:10px 13px;font-size:13px;margin:12px 0}
+.note.warn{background:var(--orange-tint);border-left-color:var(--orange)}
+.lchips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 14px}
+.ktiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.kt{border-radius:16px;padding:12px 14px;background:var(--tint)}
+.kt span{display:block;font-size:12px;font-weight:700;color:var(--muted)}
+.kt b{display:block;font-size:24px;font-weight:800;letter-spacing:-.02em;color:var(--brand);line-height:1.15}
+.kt small{font-size:12px;color:var(--muted)}
+.kt.ok{background:var(--ok-bg)}.kt.ok b{color:var(--ok)}
+.kt.warn{background:var(--orange-tint)}.kt.warn b{color:var(--orange-2)}
+.ctbl{width:100%;border-collapse:collapse;font-size:13px}
+.ctbl th{text-align:left;font-size:11.5px;color:var(--muted);font-weight:700;padding:7px 8px;border-bottom:2px solid var(--line);white-space:nowrap}
+.ctbl td{padding:8px;border-bottom:1px solid var(--line)}
+.ctbl td.r,.ctbl th.r{text-align:right;font-variant-numeric:tabular-nums}
+.ctbl tr.lk{cursor:pointer}.ctbl tr.lk:hover td{background:var(--tint)}
+.cwrap{overflow-x:auto;margin:0 -4px}
+.crow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;padding:11px 2px;border-bottom:1px solid var(--line)}
+.crow b{font-size:13.5px;line-height:1.3}
+.crow .sub{font-size:12px;color:var(--muted)}
+.crow .lc{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.crow .lc span{font-size:11px;font-weight:700;border-radius:7px;padding:2px 7px;background:var(--tint);color:var(--brand)}
+.crow .bins{font-size:11.5px;color:var(--muted);margin-top:4px;font-family:ui-monospace,Menlo,Consolas,monospace}
+.crow .q{text-align:right;white-space:nowrap}
+.crow .q div{font-size:12px;color:var(--muted)}
+.crow .q div b{font-size:15px;color:var(--ink);margin-left:4px}
+.crow .q .tg{margin-top:4px;display:inline-block}
+.cfil{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0 6px}
+.cfil .inp{flex:1 1 180px;width:auto}
+.lvt{width:100%;border-collapse:collapse;font-size:12.5px;background:#fff;border-radius:12px;overflow:hidden}
+.lvt th{text-align:left;padding:8px 10px;background:var(--tint);color:var(--brand);font-size:11.5px;position:sticky;top:0}
+.lvt td{padding:7px 10px;border-top:1px solid var(--line)}
+@media (min-width:960px){.ktiles{grid-template-columns:repeat(4,minmax(0,1fr))}.kt b{font-size:28px}}
 </style>
 </head>
 <body class="locked">
@@ -178,6 +220,7 @@ table.gt{border-collapse:separate;border-spacing:0;font-size:11px;width:100%;min
 
 <script src="config.js"></script>
 <script src="icons.js"></script>
+<script src="artikel.js"></script>
 <script>
 'use strict';
 var CFG = window.PROMO_CFG || {};
@@ -331,13 +374,13 @@ function liveSites() { return (App.online || []).filter(function (o) { return o.
 /* --------------------------------------------------------- navigasi - */
 var NAV = [['home', 'Beranda', 'home'], ['kalender', 'Kalender', 'cal'], ['jalan', 'Hari ini', 'zap'], ['memo', 'Memo', 'memo'], ['akun', 'Akun', 'user']];
 var SNAV = [['home', 'Beranda', 'home'], ['jalan', 'Promo hari ini', 'zap'], ['kalender', 'Kalender', 'cal'], ['semua', 'Semua promo', 'list'],
-            ['memo', 'Memo & update', 'memo'], ['artikel', 'List artikel', 'sheet'], ['akun', 'Toko online', 'users']];
+            ['memo', 'Memo & update', 'memo'], ['artikel', 'List artikel', 'sheet'], ['cek', 'Cek stok promo', 'search'], ['akun', 'Toko online', 'users']];
 function go(v, extra) {
   App.view = v; if (extra) Object.assign(App, extra);
   var h = '#' + v; if (location.hash !== h) history.pushState(null, '', h);
   render(); window.scrollTo(0, 0);
 }
-function readHash() { var v = (location.hash || '').slice(1); if (['home', 'jalan', 'kalender', 'semua', 'memo', 'artikel', 'akun'].indexOf(v) >= 0) App.view = v; }
+function readHash() { var v = (location.hash || '').slice(1); if (['home', 'jalan', 'kalender', 'semua', 'memo', 'artikel', 'cek', 'akun'].indexOf(v) >= 0) App.view = v; }
 window.addEventListener('popstate', function () { closeDrawer(); readHash(); if (App.data) render(); });
 
 function renderChrome() {
@@ -363,7 +406,7 @@ function render() {
   if (!App.data) return;
   document.title = CFG.BRAND || 'Promo Eigerindo';
   renderChrome();
-  var fn = { home: vHome, jalan: vJalan, kalender: vKalender, semua: vSemua, memo: vMemo, artikel: vArtikel, akun: vAkun }[App.view] || vHome;
+  var fn = { home: vHome, jalan: vJalan, kalender: vKalender, semua: vSemua, memo: vMemo, artikel: vArtikel, cek: vCek, akun: vAkun }[App.view] || vHome;
   $('#view').innerHTML = fn();
 }
 function head(title, sub) {
@@ -388,7 +431,7 @@ function vHome() {
     ['memo', 'Memo', 'memo', '#E46F3F', '#FDF0EA', memos.length],
     ['artikel', 'List artikel', 'sheet', '#107C41', '#E7F4EC', 0],
     [B.fileJuknis ? 'pdf' : 'nopdf', 'Juknis PDF', 'file', '#C0392B', '#FDECEB', 0],
-    ['akun', 'Toko online', 'users', '#1B47C2', '#E6EDFC', live]
+    ['cek', 'Cek stok promo', 'search', '#C9531F', '#FDF0EA', 0]
   ];
   var grid = '<div class="igrid">' + tiles.map(function (t, i) {
     return '<button class="ic" data-tile="' + i + '" style="--c:' + t[3] + ';--t:' + t[4] + '"><span class="i">' + svg(t[2]) + '</span><span>' + t[1] + '</span>'
@@ -451,13 +494,16 @@ function vMemo() {
 function vArtikel() {
   var rows = [], B = App.data.bulan[App.month] || {};
   monthPromos().forEach(function (p) { (p.excel || []).forEach(function (x) { rows.push({ p: p, x: x }); }); });
-  return '<section class="sheet">' + head('List artikel promo', fmtMonth(App.month) + ' · ' + rows.length + ' file')
+  var AL = (B.artikel && B.artikel.lists) || [];
+  return '<section class="sheet">' + head('List artikel promo', fmtMonth(App.month) + ' · ' + (AL.length + rows.length) + ' list')
+    + (AL.length ? '<div class="xl" style="margin-bottom:12px">' + AL.map(function (l, i) { return listBtn(l, i); }).join('') + '</div>'
+      + '<button class="btn orange block" data-go="cek" style="margin-bottom:14px">' + 'Cek stok toko saya terhadap list ini' + '</button>' : '')
     + '<div class="xl">'
     + (B.fileJuknis ? '<a href="' + esc(B.fileJuknis) + '" target="_blank" rel="noopener"><span class="x" style="background:var(--bad-bg);color:var(--bad)">' + svg('file') + '</span><span><b>Juknis lengkap</b><small>' + esc(B.title || 'File juknis') + '</small></span><span class="go">' + svg('ext') + '</span></a>' : '')
     + rows.map(function (r) {
         return '<a href="' + esc(r.x.u) + '" target="_blank" rel="noopener"><span class="x">' + svg('sheet') + '</span><span><b>' + esc(r.x.t || 'List artikel') + '</b><small>' + esc(r.p.title) + '</small></span><span class="go">' + svg('ext') + '</span></a>';
       }).join('') + '</div>'
-    + (!rows.length && !B.fileJuknis ? '<div class="empty">Belum ada file list artikel untuk bulan ini.</div>' : '') + '</section>';
+    + (!rows.length && !B.fileJuknis && !AL.length ? '<div class="empty">Belum ada list artikel untuk bulan ini.</div>' : '') + '</section>';
 }
 function vAkun() {
   var live = (App.online || []).filter(function (o) { return o.ago < 180 && o.kind === 'site'; });
@@ -562,6 +608,7 @@ function openPromo(id) {
     + (p.excel && p.excel.length ? '<h3>List artikel promo</h3><div class="xl">' + p.excel.map(function (x) {
         return '<a href="' + esc(x.u) + '" target="_blank" rel="noopener"><span class="x">' + svg('sheet') + '</span><span><b>' + esc(x.t || 'List artikel') + '</b><small>buka file Excel</small></span><span class="go">' + svg('ext') + '</span></a>';
       }).join('') + '</div>' : '')
+    + linkedLists(p)
     + '<p class="small muted" style="margin-top:18px">Selalu cocokkan dengan juknis resmi bila ada perbedaan.</p></div></div>';
   var d = document.createElement('div'); d.innerHTML = html; document.body.appendChild(d.firstChild);
   document.body.style.overflow = 'hidden';
@@ -614,6 +661,141 @@ document.addEventListener('input', function (e) {
 });
 
 /* ---------------------------------------------------------- mulai --- */
+/* ============================================ list artikel & cek stok */
+App.art = {};
+function loadArt(m) {
+  if (App.art[m]) return Promise.resolve(App.art[m]);
+  return api('art', { m: m }).then(function (d) { App.art[m] = d.lists || []; return App.art[m]; });
+}
+function artMeta() { var B = App.data.bulan[App.month] || {}; return (B.artikel && B.artikel.lists) || []; }
+function listBtn(l, i) {
+  return '<button class="xb" data-lv="' + i + '"><span class="x">' + svg('sheet') + '</span><span><b>' + esc(l.name) + '</b><small>' + l.n + ' artikel'
+    + (l.promoId ? ' · ' + esc(promoTitle(l.promoId)) : '') + '</small></span><span class="go">' + svg('next') + '</span></button>';
+}
+function promoTitle(id) { var p = (App.data.promos || []).filter(function (x) { return x.id === id; })[0]; return p ? p.title : ''; }
+function linkedLists(p) {
+  var L = artMeta(), out = '';
+  L.forEach(function (l, i) { if (l.promoId === p.id) out += listBtn(l, i); });
+  return out ? '<h3>List artikel promo</h3><div class="xl">' + out + '</div><button class="btn block" data-go="cek" style="margin-top:10px">Cek stok toko saya</button>' : '';
+}
+function fmtInfo(col, v) {
+  if (typeof v === 'number' && v > 0 && v <= 1 && /disc|diskon|potong|%/i.test(col)) return Math.round(v * 1000) / 10 + '%';
+  if (typeof v === 'number' && v >= 1000) return v.toLocaleString('id-ID');
+  return String(v == null ? '' : v);
+}
+function openList(i) {
+  var m = App.month, meta = artMeta()[i]; if (!meta) return;
+  closeDrawer();
+  var html = '<div class="ov" id="ov"><div class="drawer" role="dialog" aria-modal="true"><div class="dtop"><div class="grab"></div><button class="btn sm" data-close>Tutup</button></div>'
+    + '<span class="dcat" style="--c:#107C41">List artikel</span><h2>' + esc(meta.name) + '</h2><p class="small muted" style="margin:0 0 10px">' + meta.n + ' artikel · ' + fmtMonth(m)
+    + (meta.promoId ? ' · ' + esc(promoTitle(meta.promoId)) : '') + '</p>'
+    + '<div class="cfil"><input class="inp" id="lvQ" type="search" placeholder="Cari kode atau nama…"><button class="btn sm" data-lvdl="' + i + '">Unduh Excel</button></div>'
+    + '<div id="lvBody"><div class="loading"><span class="spin"></span>Memuat list…</div></div></div></div>';
+  var d = document.createElement('div'); d.innerHTML = html; document.body.appendChild(d.firstChild); document.body.style.overflow = 'hidden';
+  loadArt(m).then(function (lists) { App._lv = lists.filter(function (l) { return l.name === meta.name; })[0] || lists[i]; drawLv(''); })
+    .catch(function (e) { var b = $('#lvBody'); if (b) b.innerHTML = '<div class="empty">Gagal memuat list: ' + esc(e.message) + '</div>'; });
+}
+function drawLv(q) {
+  var l = App._lv, b = $('#lvBody'); if (!l || !b) return;
+  q = q.trim().toLowerCase();
+  var rows = q ? l.rows.filter(function (r) { return (r[0] + ' ' + r[1]).toLowerCase().indexOf(q) >= 0; }) : l.rows;
+  b.innerHTML = '<div class="cwrap"><table class="lvt"><thead><tr><th>Kode</th><th>Nama</th>' + l.cols.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + '</tr></thead><tbody>'
+    + rows.slice(0, 300).map(function (r) { return '<tr><td style="white-space:nowrap">' + esc(r[0]) + '</td><td>' + esc(r[1]) + '</td>' + r.slice(2).map(function (v, k) { return '<td>' + esc(fmtInfo(l.cols[k], v)) + '</td>'; }).join('') + '</tr>'; }).join('')
+    + '</tbody></table></div><p class="small muted">' + (rows.length > 300 ? 'Menampilkan 300 dari ' + rows.length + ' baris. Gunakan pencarian atau unduh Excel untuk melihat semuanya.' : rows.length + ' baris') + '</p>';
+}
+
+function vCek() {
+  var m = App.month, meta = artMeta(), C = App.cek && App.cek.month === m ? App.cek : null;
+  var h = '<section class="sheet">' + head('Cek stok promo', 'Cocokkan stok toko dengan list artikel promo · ' + fmtMonth(m))
+    + '<div class="sum" style="margin-bottom:12px">' + monthSelect() + '</div>';
+  if (!meta.length) return h + '<div class="empty">Admin belum mengunggah list artikel untuk ' + fmtMonth(m) + '.<br>Pilih bulan lain atau coba lagi nanti.</div></section>';
+  h += '<div class="lchips">' + meta.map(function (l) { return '<span class="chip">' + esc(l.name) + ' · ' + l.n + '</span>'; }).join('') + '</div>'
+    + '<label class="drop" id="dropCek"><input type="file" id="cekFile" accept=".xlsx,.xls,.csv"><span class="di">' + svg('upload') + '</span><b>Unggah Export by Bin toko</b>'
+    + '<span class="small muted">file dari sistem (kolom SKU Code, Bin Code, Zone Code, Total Qty)</span></label>'
+    + '<div id="cekStat" class="small muted" style="margin-top:8px"></div>'
+    + '<div class="note">File stok hanya dibaca di perangkat ini. Tidak dikirim atau disimpan ke server mana pun.</div></section>';
+  if (!C) return h;
+  var R = C.R, st = C.stock, f = App.cekF || { st: '', li: '', q: '', more: 0 };
+  if (st.siteCode && st.siteCode !== String(App.site.code)) h += '<section class="panel"><div class="note warn" style="margin:0">File ini dari toko <b>' + esc(st.loc) + '</b>, bukan toko kamu (' + esc(App.site.code) + '). Hasil tetap ditampilkan.</div></section>';
+  h += '<section class="panel"><div class="ph"><h2>Hasil cek</h2><span class="sub" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(st.loc || C.file) + '</span></div>'
+    + '<div class="ktiles"><div class="kt"><span>SKU promo di toko</span><b>' + R.tot.sku.toLocaleString('id-ID') + '</b><small>dari ' + R.tot.allSku.toLocaleString('id-ID') + ' SKU berstok</small></div>'
+    + '<div class="kt ok"><span>Pcs terdisplay</span><b>' + R.tot.disp.toLocaleString('id-ID') + '</b><small>Sales Area & POS</small></div>'
+    + '<div class="kt"><span>Pcs di gudang</span><b>' + R.tot.wh.toLocaleString('id-ID') + '</b><small>Warehouse</small></div>'
+    + '<div class="kt warn"><span>SKU belum display</span><b>' + R.tot.belum.toLocaleString('id-ID') + '</b><small>ada di gudang, 0 di display</small></div></div>'
+    + '<button class="btn primary block" data-cek="export" style="margin-top:12px">' + svg('download').replace('<svg ', '<svg style="width:18px;height:18px;vertical-align:-4px;margin-right:6px" ') + 'Export hasil ke Excel</button>'
+    + '<div class="cwrap" style="margin-top:14px"><table class="ctbl"><thead><tr><th>List</th><th class="r">Artikel</th><th class="r">SKU ada</th><th class="r">Display</th><th class="r">Gudang</th><th class="r">Belum display</th><th class="r">Tanpa stok</th></tr></thead><tbody>'
+    + R.per.map(function (p, i) { return '<tr class="lk" data-cek="li:' + i + '"><td><b>' + esc(p.name) + '</b>' + (p.promoId ? '<div class="small muted">' + esc(promoTitle(p.promoId)) + '</div>' : '') + '</td><td class="r">' + p.listN + '</td><td class="r">' + p.sku + '</td><td class="r">' + p.disp + '</td><td class="r">' + p.wh + '</td><td class="r" style="color:' + (p.belum ? 'var(--orange-2)' : 'inherit') + ';font-weight:700">' + p.belum + '</td><td class="r">' + p.kosong + '</td></tr>'; }).join('')
+    + '</tbody></table></div><p class="small muted" style="margin:8px 0 0">"Tanpa stok" = kode di list yang tidak ditemukan di stok toko. Daftarnya ada di file Export Excel.</p></section>';
+  var rows = R.found.filter(function (x) {
+    if (f.st && x.st !== f.st) return false;
+    if (f.li !== '' && !x.hits.some(function (hh) { return hh[0] === +f.li; })) return false;
+    if (f.q) { var q = f.q.toLowerCase(); if ((x.it.sku + ' ' + x.it.name + ' ' + x.it.bins.map(function (b) { return b.bin; }).join(' ')).toLowerCase().indexOf(q) < 0) return false; }
+    return true;
+  });
+  var lim = f.more ? rows.length : 80, TG = { disp: '<span class="tg ok">Terdisplay</span>', wh: '<span class="tg warm">Belum display</span>', dmg: '<span class="tg hot">Damage saja</span>', nol: '<span class="tg">Stok 0</span>' };
+  h += '<section class="panel"><div class="ph"><h2>Detail SKU</h2><span class="sub">' + rows.length + ' SKU</span></div>'
+    + '<div class="seg" style="margin-bottom:8px">' + [['', 'Semua'], ['wh', 'Belum display'], ['disp', 'Terdisplay'], ['dmg', 'Damage']].map(function (o) { return '<button data-cek="st:' + o[0] + '" class="' + (f.st === o[0] ? 'on' : '') + '">' + o[1] + '</button>'; }).join('') + '</div>'
+    + '<div class="cfil"><select class="inp" id="cekL" style="flex:0 1 220px"><option value="">Semua list</option>' + C.lists.map(function (l, i) { return '<option value="' + i + '"' + (String(f.li) === String(i) ? ' selected' : '') + '>' + esc(l.name) + '</option>'; }).join('') + '</select>'
+    + '<input class="inp" id="cekQ" type="search" placeholder="Cari SKU, nama, atau bin…" value="' + esc(f.q) + '"></div>'
+    + rows.slice(0, lim).map(function (x) {
+        var it = x.it;
+        return '<div class="crow"><div><b>' + esc(it.base || it.name) + '</b><div class="sub">' + esc(it.sku) + (it.color ? ' · ' + esc(it.color) : '') + (it.size ? ' · ' + esc(it.size) : '') + '</div>'
+          + '<div class="lc">' + x.hits.map(function (hh) { var l = C.lists[hh[0]], r = l.rows[hh[1]]; var inf = l.cols.slice(0, 2).map(function (c, k) { var v = r[k + 2]; return v === '' || v == null ? '' : c + ' ' + fmtInfo(c, v); }).filter(Boolean).join(' · '); return '<span>' + esc(l.name) + (inf ? ' · ' + esc(inf) : '') + '</span>'; }).join('') + '</div>'
+          + '<div class="bins">' + it.bins.map(function (b) { return esc(b.bin) + '·' + b.qty; }).join('  ') + '</div></div>'
+          + '<div class="q"><div>Display<b>' + it.disp + '</b></div><div>Gudang<b>' + it.wh + '</b></div>' + (it.dmg ? '<div>Damage<b>' + it.dmg + '</b></div>' : '') + TG[x.st] + '</div></div>';
+      }).join('')
+    + (rows.length > lim ? '<button class="btn block" data-cek="more" style="margin-top:12px">Tampilkan semua (' + rows.length + ')</button>' : '')
+    + (rows.length ? '' : '<div class="empty" style="margin-top:8px">Tidak ada SKU yang cocok dengan filter.</div>') + '</section>';
+  return h;
+}
+async function readCek(f) {
+  var st = $('#cekStat'), m = App.month;
+  if (st) st.innerHTML = '<span class="spin"></span>Membaca ' + esc(f.name) + '…';
+  try {
+    if (!(await window.Artikel.needXLSX())) throw new Error('Pembaca Excel gagal dimuat. Cek koneksi internet.');
+    var wb = window.XLSX.read(await f.arrayBuffer(), { type: 'array' });
+    var stock = window.Artikel.readByBin(wb);
+    if (st) st.innerHTML = '<span class="spin"></span>Mencocokkan ' + Object.keys(stock.items).length + ' SKU dengan list artikel…';
+    var lists = await loadArt(m);
+    if (!lists.length) throw new Error('List artikel ' + fmtMonth(m) + ' kosong.');
+    var R = window.Artikel.match(stock, lists);
+    App.cek = { month: m, file: f.name, stock: stock, lists: lists, R: R, at: new Date().toLocaleString('id-ID') };
+    App.cekF = { st: '', li: '', q: '', more: 0 };
+    render();
+    toast(R.tot.sku + ' SKU promo ditemukan di stok toko.');
+  } catch (e) { if (st) st.innerHTML = '<span style="color:var(--bad)">' + esc(e.message || String(e)) + '</span>'; }
+}
+document.addEventListener('click', function (e) {
+  var t = e.target;
+  var lv = t.closest && t.closest('[data-lv]'); if (lv) { e.stopPropagation(); openList(+lv.dataset.lv); return; }
+  var dl = t.closest && t.closest('[data-lvdl]');
+  if (dl) { window.Artikel.needXLSX().then(function () { if (App._lv) window.Artikel.exportList([App._lv], App.month); }); return; }
+  var c = t.closest && t.closest('[data-cek]'); if (!c || !App.cek) return;
+  var k = c.dataset.cek, F = App.cekF, y = window.scrollY;
+  if (k === 'export') { window.Artikel.needXLSX().then(function () { var C = App.cek; var fn = window.Artikel.exportResult(C.R, C.stock, C.lists, { site: App.site.code + ' ' + (App.site.name || ''), monthLabel: fmtMonth(C.month), month: C.month, file: C.file, at: C.at }); toast('Tersimpan: ' + fn); }); return; }
+  if (k === 'more') F.more = 1;
+  else if (k.indexOf('st:') === 0) { F.st = k.slice(3); F.more = 0; }
+  else if (k.indexOf('li:') === 0) { F.li = k.slice(3); F.more = 0; F.st = ''; render(); var d = $('#cekL'); if (d) d.closest('.panel').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+  render(); window.scrollTo(0, y);
+}, true);
+document.addEventListener('change', function (e) {
+  var t = e.target;
+  if (t.id === 'cekFile' && t.files[0]) { readCek(t.files[0]); t.value = ''; }
+  if (t.id === 'cekL' && App.cekF) { App.cekF.li = t.value; App.cekF.more = 0; var y = window.scrollY; render(); window.scrollTo(0, y); }
+});
+var cekT;
+document.addEventListener('input', function (e) {
+  var t = e.target;
+  if (t.id === 'lvQ') { drawLv(t.value); return; }
+  if (t.id === 'cekQ' && App.cekF) {
+    App.cekF.q = t.value; clearTimeout(cekT);
+    cekT = setTimeout(function () { var pos = t.selectionStart, y = window.scrollY; render(); window.scrollTo(0, y); var n = $('#cekQ'); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch (er) {} } }, 300);
+  }
+});
+document.addEventListener('dragover', function (e) { var d = e.target.closest && e.target.closest('#dropCek'); if (d) { e.preventDefault(); d.classList.add('over'); } });
+document.addEventListener('dragleave', function (e) { var d = e.target.closest && e.target.closest('#dropCek'); if (d) d.classList.remove('over'); });
+document.addEventListener('drop', function (e) { var d = e.target.closest && e.target.closest('#dropCek'); if (!d) return; e.preventDefault(); d.classList.remove('over'); if (e.dataTransfer.files[0]) readCek(e.dataTransfer.files[0]); });
+
 (function init() {
   if (!/^https:\/\/script\.google(usercontent)?\.com\//.test(CFG.API || '') || /GANTI_DENGAN/.test(CFG.API)) {
     hideGate(); $('#view').innerHTML = '<div class="sheet"><div class="empty">Belum tersambung ke database.<br>Isi <b>API</b> di <code>config.js</code> dengan URL Web App Apps Script.</div></div>';
