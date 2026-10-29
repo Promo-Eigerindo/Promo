@@ -13,6 +13,10 @@ Admin cukup mengunggah file juknis (PDF atau PPTX). Isinya dibaca otomatis, dita
 | `index.html` | Halaman untuk toko (login No Site) |
 | `admin.html` | Halaman admin (unggah juknis, koreksi, terbitkan, kelola toko) |
 | `parse.js` | Pembaca file juknis PDF & PPTX di browser |
+| `app.css` | Tampilan bersama (mobile: app bar + bottom nav, desktop: sidebar) |
+| `icons.js` | Ikon yang dipakai kedua halaman |
+| `artikel.js` | Baca Excel list artikel, baca Export by Bin, pencocokan (VLOOKUP), dan ekspor Excel |
+| `img/logo.png`, `img/logo-white.png` | Logo Eigerindo MPI (latar transparan, versi biru & putih) |
 | `config.js` | Satu-satunya file yang perlu kamu ubah setelah deploy |
 | `Code.gs` | Backend Apps Script (disalin ke script.google.com, bukan ke GitHub Pages) |
 
@@ -38,7 +42,7 @@ Admin cukup mengunggah file juknis (PDF atau PPTX). Isinya dibaca otomatis, dita
 
 ### 2. Frontend — GitHub Pages
 
-1. Buat repo baru, unggah `index.html`, `admin.html`, `parse.js`, `config.js`, `README.md`.
+1. Buat repo baru, unggah semua file termasuk folder `img/` (struktur foldernya harus sama).
 2. Buka `config.js`, ganti `API` dengan URL `/exec` tadi.
 3. **Settings → Pages → Source: Deploy from a branch → `main` / root** → Save.
 4. Tunggu ±1 menit. Alamatnya jadi:
@@ -93,3 +97,18 @@ Slide yang tidak dikenali ditampilkan apa adanya lewat tombol *Lihat isinya*, ja
 - Satu bulan hanya menyimpan satu versi juknis. Menerbitkan ulang akan mengganti isi bulan tersebut (riwayatnya tercatat di sheet `Log`).
 - File juknis dan Excel tidak disimpan di spreadsheet — yang disimpan linknya. Unggah filenya ke Drive atau SharePoint dulu, lalu tempel linknya.
 - Apps Script punya kuota harian. Dengan ±400 toko yang membuka beberapa kali sehari masih aman, tapi kalau nanti terasa lambat, naikkan jeda `ping` di `index.html` (sekarang 60 detik).
+
+---
+
+## List artikel promo & cek stok toko
+
+**Admin** → menu *List artikel promo*: pilih bulan, unggah Excel list artikel. Satu file boleh berisi banyak sheet; tiap sheet menjadi satu list. Untuk tiap sheet bisa diatur nama list, kolom kode, kolom nama, kolom warna, kolom info yang ditampilkan ke toko, dan promo yang dikaitkan (terisi otomatis dari kemiripan nama sheet dengan judul promo). Mengunggah ulang untuk bulan yang sama akan menggantikan list lama.
+
+Cara kode dicocokkan:
+- 12–13 digit → SKU persis
+- 9 digit → artikel, semua warna & ukuran
+- 9 digit + kolom Warna (atau `910005461.BLK`) → artikel di warna itu saja
+
+**Toko** → menu *Cek stok promo*: unggah file Export by Bin dari sistem. Hasilnya: SKU promo yang ada di toko, pcs terdisplay vs gudang, SKU yang belum dipajang beserta lokasi bin, dan kode list yang tidak ada stoknya. Bisa diekspor ke Excel (Ringkasan, Semua SKU promo, Per bin, satu sheet per list, Tidak ada stok).
+
+File Export by Bin **tidak dikirim ke server**; semuanya diproses di perangkat toko.
