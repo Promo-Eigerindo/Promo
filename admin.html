@@ -71,7 +71,7 @@ textarea.inp{min-height:80px;resize:vertical}
     <div class="err" id="aErr"></div>
     <button type="button" class="btn sm" id="aTest" style="margin-top:4px">Tes koneksi server</button>
     <div class="small muted" id="aTestOut" style="margin-top:8px;line-height:1.5"></div>
-    <div class="small muted" style="margin-top:10px">Versi halaman: 5</div>
+    <div class="small muted" style="margin-top:10px">Versi halaman: 6</div>
   </form>
 </div>
 
@@ -83,6 +83,7 @@ textarea.inp{min-height:80px;resize:vertical}
 
 <header class="topbar">
   <img class="logo" src="img/logo-white.png" alt="Eigerindo MPI">
+  <span class="ttl" id="tbTitle"></span>
   <span class="sp"></span>
   <button class="ibtn" id="reload" title="Muat ulang"></button>
   <button class="ibtn" id="tbOnline" title="Toko online"></button>
@@ -106,7 +107,7 @@ var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, f
 var pad = function (n) { return ('0' + n).slice(-2); };
 var MONL = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 var MON = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-var fmtMonth = function (m) { var a = String(m).split('-'); return MONL[+a[1] - 1] + ' ' + a[0]; };
+var fmtMonth = function (m) { var a = String(m || '').split('-'); return MONL[+a[1] - 1] ? MONL[+a[1] - 1] + ' ' + a[0] : String(m || ''); };
 var fmtDateS = function (iso) { if (!iso) return '–'; var a = iso.split('-'); return +a[2] + ' ' + MON[+a[1] - 1]; };
 function todayISO() { var d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
 function toast(m, ms) { var t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('on'); }, ms || 3000); }
@@ -120,6 +121,22 @@ function rangeTxt(rs) {
   }).join(', ');
 }
 
+var MEN = { Jan: 1, Feb: 2, Mar: 3, Apr: 4, May: 5, Jun: 6, Jul: 7, Aug: 8, Sep: 9, Oct: 10, Nov: 11, Dec: 12 };
+function normMonth(v) {
+  var t = String(v == null ? '' : v), m = t.match(/^(\d{4})-(\d{1,2})/);
+  if (m) return m[1] + '-' + pad(m[2]);
+  m = t.match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2}\s+(\d{4})/);
+  return m ? m[2] + '-' + pad(MEN[m[1]]) : t;
+}
+function normData(d) {
+  if (!d) return d;
+  (d.promos || []).forEach(function (p) { p.month = normMonth(p.month); });
+  (d.memos || []).forEach(function (x) { x.month = normMonth(x.month); });
+  var b = {}; Object.keys(d.bulan || {}).forEach(function (k) { b[normMonth(k)] = d.bulan[k]; }); d.bulan = b;
+  var ms = {}; (d.months || []).forEach(function (k) { ms[normMonth(k)] = 1; });
+  d.months = Object.keys(ms).filter(function (k) { return /^\d{4}-\d{2}$/.test(k); }).sort();
+  return d;
+}
 var A = { token: '', me: null, data: null, online: [], sites: [], log: [], tab: 'home', W: null, src: '' };
 
 
@@ -181,7 +198,7 @@ function boot() {
   $('#view').innerHTML = '<div class="card"><span class="spin"></span>Memuat data…</div>';
   api('boot').then(function (r) {
     if (!r.admin) { A.token = ''; LS.set('promo_admin', ''); gate('Sesi bukan admin. Masuk lagi.'); return; }
-    A.data = r.data; A.online = r.online || []; A.me = r.site;
+    A.data = normData(r.data); A.online = r.online || []; A.me = r.site;
     return api('sites').then(function (s) { A.sites = s.sites || []; A.online = s.online || A.online; });
   }).then(function () { if (A.token) render(); })
     .catch(function (e) {
@@ -209,6 +226,7 @@ function renderChrome() {
     return '<button data-go="' + n[0] + '" class="' + (A.tab === n[0] ? 'on ' : '') + (n[3] && A.tab !== n[0] ? n[3] : '') + '">' + svg(n[2]) + n[1] + bd + '</button>';
   }).join('') + '<button data-tile="site">' + svg('ext') + 'Buka halaman toko</button>';
   $('#sfoot').innerHTML = 'Admin<b>' + esc((A.me && A.me.name) || 'Admin') + '</b><button class="btn sm block" id="out2">Keluar</button>';
+  $('#tbTitle').innerHTML = (A.tab === 'home' || !TITLES[A.tab] ? 'Beranda' : TITLES[A.tab][0]) + '<small>Admin · ' + esc((A.me && A.me.name) || '') + '</small>';
   $('#tbOnline').innerHTML = svg('users') + (live ? '<span class="bd">' + live + '</span>' : '');
   $('#out').innerHTML = svg('out');
   $('#reload').innerHTML = svg('refresh');
@@ -499,7 +517,7 @@ function repRow(name, fields, v, i) {
 function openPromoEditor(idx) {
   var p = A.W.promos[idx];
   var cats = Object.keys(CFG.CATS || { Lainnya: 1 });
-  var html = '<div class="ov" id="ov"><div class="drawer"><div class="grab"></div><button class="btn sm" data-close style="float:right">Tutup</button>'
+  var html = '<div class="ov" id="ov"><div class="drawer"><div class="dtop"><div class="grab"></div><button class="btn sm" data-close>Tutup</button></div>'
     + '<h2>Ubah promo</h2>'
     + '<div class="fs"><h4>Identitas</h4><div class="g2">'
       + '<label class="fl">Kategori<select class="inp" data-f="cat">' + cats.map(function (c) { return '<option' + (c === p.cat ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('')
@@ -566,7 +584,7 @@ function savePromoEditor() {
 }
 function openMemoEditor(idx) {
   var m = A.W.memos[idx];
-  var html = '<div class="ov" id="ov"><div class="drawer"><div class="grab"></div><button class="btn sm" data-close style="float:right">Tutup</button><h2>Ubah memo</h2>'
+  var html = '<div class="ov" id="ov"><div class="drawer"><div class="dtop"><div class="grab"></div><button class="btn sm" data-close>Tutup</button></div><h2>Ubah memo</h2>'
     + '<div class="fs"><div class="g2"><label class="fl">Judul<input class="inp" data-f="title" value="' + esc(m.title) + '"></label>'
     + '<label class="fl">Tanggal<input class="inp" type="date" data-f="date" value="' + esc(m.date || '') + '"></label></div>'
     + '<label class="fl">Isi — satu baris satu poin<textarea class="inp" data-f="isi" rows="6">' + esc((m.isi || []).join('\n')) + '</textarea></label>'
@@ -634,7 +652,7 @@ function publish() {
   if (!confirm('Terbitkan ' + A.W.promos.length + ' promo untuk ' + fmtMonth(A.W.month) + '?\nData bulan ini di toko akan diganti dengan versi ini.')) return;
   toast('Mengirim ke spreadsheet…', 8000);
   post({ a: 'save', month: A.W.month, meta: A.W.meta, promos: A.W.promos, memos: A.W.memos })
-    .then(function (r) { A.data = r.data; A.W = null; A.tab = 'promo'; history.replaceState(null, '', '#promo'); A.pm = r.data.months[r.data.months.length - 1]; render(); toast('Terbit. Toko sudah bisa melihatnya.'); })
+    .then(function (r) { A.data = normData(r.data); A.W = null; A.tab = 'promo'; history.replaceState(null, '', '#promo'); A.pm = r.data.months[r.data.months.length - 1]; render(); toast('Terbit. Toko sudah bisa melihatnya.'); })
     .catch(function (e) { toast('Gagal menerbitkan: ' + (e.message || e.code), 6000); });
 }
 
@@ -703,7 +721,7 @@ document.addEventListener('click', function (e) {
     toast(P.exact ? 'Tanggal terbaca: ' + rangeTxt(P.ranges) : 'Tanggal tidak jelas, dipakai satu bulan penuh. Periksa manual.');
   }
   else if (k === 'unknown') {
-    var h = '<div class="ov" id="ov"><div class="drawer"><div class="grab"></div><button class="btn sm" data-close style="float:right">Tutup</button><h2>Slide yang tidak dikenali</h2>'
+    var h = '<div class="ov" id="ov"><div class="drawer"><div class="dtop"><div class="grab"></div><button class="btn sm" data-close>Tutup</button></div><h2>Slide yang tidak dikenali</h2>'
       + A.W.unknown.map(function (u) { return '<div class="fs"><h4>Slide ' + u.slide + '</h4><pre style="white-space:pre-wrap;font-size:12px;margin:0">' + esc(u.text) + '</pre></div>'; }).join('')
       + '</div></div>';
     var d = document.createElement('div'); d.innerHTML = h; document.body.appendChild(d.firstChild);
@@ -711,7 +729,7 @@ document.addEventListener('click', function (e) {
   else if (k === 'editMonth') loadMonthToW(A.pm);
   else if (k === 'delMonth') {
     if (!confirm('Hapus seluruh promo & memo ' + fmtMonth(A.pm) + ' dari database? Tidak bisa dibatalkan.')) return;
-    post({ a: 'delMonth', month: A.pm }).then(function (r) { A.data = r.data; A.pm = null; render(); toast('Bulan dihapus.'); }).catch(function (er) { toast('Gagal: ' + er.message); });
+    post({ a: 'delMonth', month: A.pm }).then(function (r) { A.data = normData(r.data); A.pm = null; render(); toast('Bulan dihapus.'); }).catch(function (er) { toast('Gagal: ' + er.message); });
   }
   else if (k === 'siteMerge' || k === 'siteReplace') {
     var txt2 = $('#siteText').value;
