@@ -71,7 +71,7 @@ textarea.inp{min-height:80px;resize:vertical}
     <div class="err" id="aErr"></div>
     <button type="button" class="btn sm" id="aTest" style="margin-top:4px">Tes koneksi server</button>
     <div class="small muted" id="aTestOut" style="margin-top:8px;line-height:1.5"></div>
-    <div class="small muted" style="margin-top:10px">Versi halaman: 8</div>
+    <div class="small muted" style="margin-top:10px">Versi halaman: 9</div>
   </form>
 </div>
 
@@ -820,6 +820,13 @@ function viewArtA() {
   return h;
 }
 function A_build(S) { return window.Artikel.buildList(S, S.name, S.promoId); }
+var rpA = function (n) { return 'Rp ' + Math.round(n).toLocaleString('id-ID'); };
+function priceTxt(p) {
+  if (p.normal && p.promo) return '<s class="muted">' + rpA(p.normal) + '</s> → <b>' + rpA(p.promo) + '</b> <b style="color:var(--orange-2)">-' + p.disc + '%</b>';
+  if (p.disc) return '<b style="color:var(--orange-2)">Disc ' + p.disc + '%</b> <span class="muted">· harga dari Katalog</span>';
+  if (p.normal) return rpA(p.normal) + ' <span class="muted">· tanpa diskon</span>';
+  return '<span style="color:var(--bad)">belum ada diskon</span>';
+}
 function sheetCard(S, i, promos) {
   var L = A_build(S), ks = window.Artikel.keyStats(L.rows);
   var opt = function (sel, allowNone) { return (allowNone ? '<option value="-1">(tidak ada)</option>' : '') + S.headers.map(function (hd, c) { return '<option value="' + c + '"' + (c === sel ? ' selected' : '') + '>' + esc(hd) + '</option>'; }).join(''); };
@@ -833,10 +840,16 @@ function sheetCard(S, i, promos) {
     + '<label class="fl">Kolom kode<select class="inp" data-aw="code|' + i + '">' + opt(S.codeCol) + '</select></label>'
     + '<label class="fl">Kolom nama<select class="inp" data-aw="ncol|' + i + '">' + opt(S.nameCol, true) + '</select></label>'
     + '<label class="fl">Kolom warna (opsional)<select class="inp" data-aw="ccol|' + i + '">' + opt(S.colorCol, true) + '</select></label>'
-    + '</div><div class="small" style="font-weight:700;margin:2px 0 6px">Kolom info yang ikut ditampilkan ke toko</div><div style="display:flex;flex-wrap:wrap;gap:6px 12px;margin-bottom:10px">'
-    + S.headers.map(function (hd, c) { if (c === S.codeCol || c === S.nameCol || c === S.colorCol) return ''; return '<label class="small" style="display:flex;gap:5px;align-items:center"><input type="checkbox" data-aw="info|' + i + '|' + c + '"' + (S.infoCols.indexOf(c) >= 0 ? ' checked' : '') + '>' + esc(hd) + '</label>'; }).join('')
-    + '</div><div class="tbl-wrap" style="max-height:200px"><table class="tbl"><thead><tr><th>Kode</th><th>Nama</th>' + L.cols.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + '</tr></thead><tbody>'
-    + L.rows.slice(0, 5).map(function (r) { return '<tr>' + r.map(function (v) { return '<td class="small">' + esc(v) + '</td>'; }).join('') + '</tr>'; }).join('')
+    + '</div><div class="small" style="font-weight:700;margin:4px 0 6px">Harga & diskon untuk toko</div><div class="g2">'
+    + '<label class="fl">Kolom diskon<select class="inp" data-aw="dcol|' + i + '">' + opt(S.discCol, true) + '</select></label>'
+    + '<label class="fl">Kolom harga normal<select class="inp" data-aw="pcol|' + i + '">' + opt(S.priceCol, true) + '</select></label>'
+    + '<label class="fl">Kolom harga promo<select class="inp" data-aw="ppcol|' + i + '">' + opt(S.ppriceCol, true) + '</select></label>'
+    + '<label class="fl">Diskon tetap % <span class="muted" style="font-weight:500">(bila tak ada kolom diskon)</span><input class="inp" inputmode="decimal" data-aw="dfix|' + i + '" value="' + esc(S.dfix) + '" placeholder="mis. 50"></label>'
+    + '</div><p class="small muted" style="margin:-4px 0 10px">Bila list tidak punya harga normal, toko memakai harga dari Katalog Produk. Harga promo dihitung otomatis dari harga normal × diskon.</p>'
+    + '<div><div class="small" style="font-weight:700;margin:2px 0 6px">Kolom info yang ikut ditampilkan ke toko</div><div style="display:flex;flex-wrap:wrap;gap:6px 12px;margin-bottom:10px">'
+    + S.headers.map(function (hd, c) { if (c === S.codeCol || c === S.nameCol || c === S.colorCol || c === S.discCol || c === S.priceCol || c === S.ppriceCol) return ''; return '<label class="small" style="display:flex;gap:5px;align-items:center"><input type="checkbox" data-aw="info|' + i + '|' + c + '"' + (S.infoCols.indexOf(c) >= 0 ? ' checked' : '') + '>' + esc(hd) + '</label>'; }).join('')
+    + '</div><div class="tbl-wrap" style="max-height:220px"><table class="tbl"><thead><tr><th>Kode</th><th>Nama</th>' + L.cols.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + '<th>Tampil di toko</th></tr></thead><tbody>'
+    + L.rows.slice(0, 5).map(function (r) { return '<tr>' + r.map(function (v) { return '<td class="small">' + esc(v) + '</td>'; }).join('') + '<td class="small" style="white-space:nowrap">' + priceTxt(window.Artikel.priceOf(L, r, 0)) + '</td></tr>'; }).join('')
     + (L.rows.length ? '' : '<tr><td colspan="9" class="small" style="color:var(--bad)">Tidak ada kode 9–13 digit di kolom ini. Pilih kolom kode yang benar.</td></tr>')
     + '</tbody></table></div></div>';
 }
@@ -890,6 +903,10 @@ document.addEventListener('change', function (e) {
   else if (p[0] === 'code') S.codeCol = +t.value;
   else if (p[0] === 'ncol') S.nameCol = +t.value;
   else if (p[0] === 'ccol') S.colorCol = +t.value;
+  else if (p[0] === 'dcol') S.discCol = +t.value;
+  else if (p[0] === 'pcol') S.priceCol = +t.value;
+  else if (p[0] === 'ppcol') S.ppriceCol = +t.value;
+  else if (p[0] === 'dfix') S.dfix = t.value.trim();
   else if (p[0] === 'info') { var c = +p[2], ix = S.infoCols.indexOf(c); if (t.checked && ix < 0) S.infoCols.push(c); if (!t.checked && ix >= 0) S.infoCols.splice(ix, 1); S.infoCols.sort(function (a, b) { return a - b; }); }
   if (p[0] !== 'name') { render(); window.scrollTo(0, y); }
 });
