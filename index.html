@@ -141,6 +141,13 @@ table.gt{border-collapse:separate;border-spacing:0;font-size:11px;width:100%;min
 .kai .tg{flex:none}
 
 /* ---------- list artikel & cek stok ---------- */
+.pr{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 7px;margin:5px 0 2px}
+.pr .dsc{background:var(--bad);color:#fff;font-size:11px;font-weight:800;border-radius:6px;padding:1px 6px;align-self:center}
+.pr b{font-size:15.5px;font-weight:800;color:var(--orange-2);letter-spacing:-.01em}
+.pr s{font-size:12.5px;color:var(--muted)}
+.pr b.nm{color:var(--ink)}
+.pr small{font-size:11.5px;color:var(--muted)}
+
 .xl .xb{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:11px 13px;color:var(--ink)}
 .xl .xb:hover,.xl .xb:focus-visible{border-color:var(--brand)}
 .drop{position:relative;display:grid;place-items:center;gap:4px;border:2px dashed var(--line-2);border-radius:18px;padding:26px 16px;text-align:center;cursor:pointer;background:var(--tint)}
@@ -744,8 +751,9 @@ function vCek() {
     + '<input class="inp" id="cekQ" type="search" placeholder="Cari SKU, nama, atau bin…" value="' + esc(f.q) + '"></div>'
     + rows.slice(0, lim).map(function (x) {
         var it = x.it;
-        return '<div class="crow' + (App.data.foto ? ' hasf' : '') + '">' + fotoThumb(it.gen + '.' + it.color, it.base || it.name, it.sku + (it.color ? ' · ' + it.color : '') + (it.size ? ' · ' + it.size : '')) + '<div><b>' + esc(it.base || it.name) + '</b><div class="sub">' + esc(it.sku) + (it.color ? ' · ' + esc(it.color) : '') + (it.size ? ' · ' + esc(it.size) : '') + '</div>'
-          + '<div class="lc">' + x.hits.map(function (hh) { var l = C.lists[hh[0]], r = l.rows[hh[1]]; var inf = l.cols.slice(0, 2).map(function (c, k) { var v = r[k + 2]; return v === '' || v == null ? '' : c + ' ' + fmtInfo(c, v); }).filter(Boolean).join(' · '); return '<span>' + esc(l.name) + (inf ? ' · ' + esc(inf) : '') + '</span>'; }).join('') + '</div>'
+        return '<div class="crow' + (App.data.foto ? ' hasf' : '') + '">' + fotoThumb(it.gen + '.' + it.color, it.base || it.name, it.sku + (it.color ? ' · ' + it.color : '') + (it.size ? ' · ' + it.size : ''), priceTxtPlain(x.pr)) + '<div><b>' + esc(it.base || it.name) + '</b><div class="sub">' + esc(it.sku) + (it.color ? ' · ' + esc(it.color) : '') + (it.size ? ' · ' + esc(it.size) : '') + '</div>'
+          + priceBlock(x.pr)
+          + '<div class="lc">' + x.hits.map(function (hh) { var l = C.lists[hh[0]], r = l.rows[hh[1]]; var PX = window.Artikel.listPriceCols(l), inf = l.cols.map(function (c, k) { if (k === PX.dc || k === PX.pc || k === PX.ppc) return ''; var v = r[k + 2]; return v === '' || v == null ? '' : c + ' ' + fmtInfo(c, v); }).filter(Boolean).slice(0, 2).join(' · '); return '<span>' + esc(l.name) + (inf ? ' · ' + esc(inf) : '') + '</span>'; }).join('') + '</div>'
           + '<div class="bins">' + it.bins.map(function (b) { return esc(b.bin) + '·' + b.qty; }).join('  ') + '</div></div>'
           + '<div class="q"><div>Display<b>' + it.disp + '</b></div><div>Gudang<b>' + it.wh + '</b></div>' + (it.dmg ? '<div>Damage<b>' + it.dmg + '</b></div>' : '') + TG[x.st] + '</div></div>';
       }).join('')
@@ -764,6 +772,8 @@ async function readCek(f) {
     var lists = await loadArt(m);
     if (!lists.length) throw new Error('List artikel ' + fmtMonth(m) + ' kosong.');
     var R = window.Artikel.match(stock, lists);
+    window.Artikel.attachPrices(R, lists, null);
+    if (R.found.some(function (x) { return x.pr && !x.pr.normal; })) setTimeout(function () { fillKatalog(R, lists); }, 80);
     App.cek = { month: m, file: f.name, stock: stock, lists: lists, R: R, at: new Date().toLocaleString('id-ID') };
     App.cekF = { st: '', li: '', q: '', more: 0 };
     setTimeout(function () { loadFotoFor(R.found.map(function (x) { return x.it.gen + '.' + x.it.color; })); }, 50);
@@ -804,12 +814,12 @@ document.addEventListener('drop', function (e) { var d = e.target.closest && e.t
 
 /* ============================================================ foto produk */
 App.foto = {}; App._fpend = {}; App.fotoBases = null;
-function fotoThumb(key, title, sub) {
+function fotoThumb(key, title, sub, ptxt) {
   if (!App.data.foto) return '';
   var f = App.foto[key];
   if (f === undefined) return '<span class="pth wait" aria-hidden="true"></span>';
   if (!f) return '<span class="pth none" title="Belum ada foto">' + svg('image') + '</span>';
-  return '<button class="pth' + (f.alt ? ' alt' : '') + '" data-foto="' + esc(key) + '" data-ft="' + esc(title) + '" data-fs="' + esc(sub) + '" aria-label="Lihat foto ' + esc(title) + '">'
+  return '<button class="pth' + (f.alt ? ' alt' : '') + '" data-foto="' + esc(key) + '" data-ft="' + esc(title) + '" data-fs="' + esc(sub) + '"' + (ptxt ? ' data-fp="' + esc(ptxt) + '"' : '') + ' aria-label="Lihat foto ' + esc(title) + '">'
     + '<img loading="lazy" src="' + esc(window.Foto.url(f.i[0], App.fotoBases, 120)) + '" alt="">' + (f.i.length > 1 ? '<span class="n">' + f.i.length + '</span>' : '') + '</button>';
 }
 /* kunci foto dari baris list: artikel.warna bila ada, kalau SKU ambil warna dari nama, selain itu warna apa pun */
@@ -843,8 +853,53 @@ document.addEventListener('click', function (e) {
   e.stopPropagation(); e.preventDefault();
   var f = App.foto[b.dataset.foto]; if (!f) return;
   window.Foto.open(window.Foto.gallery(f.i, App.fotoBases), 0, { title: esc(b.dataset.ft), sub: esc(b.dataset.fs),
-    note: f.alt ? 'Foto warna ' + esc(f.alt) + ' — warna ini belum ada fotonya' : '' });
+    note: (b.dataset.fp ? b.dataset.fp + (f.alt ? ' · ' : '') : '') + (f.alt ? 'Foto warna ' + esc(f.alt) + ' — warna ini belum ada fotonya' : '') });
 }, true);
+
+/* ============================================================ harga & diskon */
+var rp = function (n) { return 'Rp ' + Math.round(n).toLocaleString('id-ID'); };
+function priceBlock(p) {
+  if (!p || (!p.disc && !p.normal)) return '';
+  var src = p.src === 'katalog' ? ' title="Harga normal dari Katalog Produk"' : '';
+  if (p.normal && p.promo) return '<div class="pr"' + src + '><span class="dsc">-' + p.disc + '%</span><b>' + rp(p.promo) + '</b><s>' + rp(p.normal) + '</s></div>';
+  if (p.disc) return '<div class="pr"><span class="dsc">-' + p.disc + '%</span><small>harga normal belum tersedia</small></div>';
+  return '<div class="pr"' + src + '><b class="nm">' + rp(p.normal) + '</b><small>tanpa diskon di list</small></div>';
+}
+function priceTxtPlain(p) {
+  if (!p) return '';
+  if (p.normal && p.promo) return rp(p.promo) + ' (diskon ' + p.disc + '% dari ' + rp(p.normal) + ')';
+  if (p.disc) return 'Diskon ' + p.disc + '%';
+  return p.normal ? rp(p.normal) : '';
+}
+/* harga normal cadangan dari Katalog Produk (master.json), dimuat hanya bila list tidak punya harga */
+var KAT_BASES = CFG.KATALOG === false ? [] : (CFG.KATALOG || ['https://katalogeigerjogjajateng.github.io/Katalog-Produk/', 'https://raw.githubusercontent.com/katalogeigerjogjajateng/Katalog-Produk/main/']);
+function loadKat() {
+  if (App._kat) return App._kat;
+  return (App._kat = (async function () {
+    for (var i = 0; i < KAT_BASES.length; i++) {
+      try {
+        var r = await fetch(KAT_BASES[i] + 'master.json', { cache: 'default' }); if (!r.ok) continue;
+        var j = await r.json(), sku = {}, key = {}, gen = {};
+        Object.keys(j.items || {}).forEach(function (k) {
+          var it = j.items[k], p = +it.p || 0; if (!p) return;
+          key[k.toUpperCase()] = p; var g = k.split('.')[0]; if (!gen[g] || p > gen[g]) gen[g] = p;
+          Object.keys(it.a || {}).forEach(function (s) { sku[s] = p; });
+        });
+        return { sku: sku, key: key, gen: gen };
+      } catch (e) {}
+    }
+    return null;
+  })());
+}
+function fillKatalog(R, lists) {
+  loadKat().then(function (K) {
+    if (!K) return;
+    window.Artikel.attachPrices(R, lists, function (it) { return K.sku[it.sku] || K.key[it.gen + '.' + it.color] || K.gen[it.gen] || 0; });
+    if (App.view === 'cek' && App.cek && App.cek.R === R && !$('#ov') && !document.body.classList.contains('lb-open')) {
+      var y = window.scrollY, a = document.activeElement && document.activeElement.id; render(); window.scrollTo(0, y); if (a === 'cekQ' && $('#cekQ')) $('#cekQ').focus();
+    }
+  });
+}
 
 (function init() {
   if (!/^https:\/\/script\.google(usercontent)?\.com\//.test(CFG.API || '') || /GANTI_DENGAN/.test(CFG.API)) {
