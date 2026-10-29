@@ -71,7 +71,7 @@ textarea.inp{min-height:80px;resize:vertical}
     <div class="err" id="aErr"></div>
     <button type="button" class="btn sm" id="aTest" style="margin-top:4px">Tes koneksi server</button>
     <div class="small muted" id="aTestOut" style="margin-top:8px;line-height:1.5"></div>
-    <div class="small muted" style="margin-top:10px">Versi halaman: 7</div>
+    <div class="small muted" style="margin-top:10px">Versi halaman: 8</div>
   </form>
 </div>
 
@@ -99,6 +99,7 @@ textarea.inp{min-height:80px;resize:vertical}
 <script src="icons.js"></script>
 <script src="parse.js"></script>
 <script src="artikel.js"></script>
+<script src="foto.js"></script>
 <script>
 'use strict';
 var CFG = window.PROMO_CFG || {};
@@ -210,9 +211,10 @@ function boot() {
 
 /* ----------------------------------------------------------- render */
 var ANAV = [['home', 'Beranda', 'home'], ['promo', 'Promo', 'list'], ['terbit', 'Unggah', 'upload'], ['toko', 'Toko', 'store'], ['aktif', 'Aktivitas', 'history']];
-var ASNAV = [['home', 'Beranda', 'home'], ['terbit', 'Unggah juknis', 'upload', 'cta'], ['promo', 'Promo tersimpan', 'list'], ['artikel', 'List artikel promo', 'sheet'], ['toko', 'Daftar toko', 'store'], ['aktif', 'Toko online & log', 'users']];
+var ASNAV = [['home', 'Beranda', 'home'], ['terbit', 'Unggah juknis', 'upload', 'cta'], ['promo', 'Promo tersimpan', 'list'], ['artikel', 'List artikel promo', 'sheet'], ['foto', 'Foto produk', 'image'], ['toko', 'Daftar toko', 'store'], ['aktif', 'Toko online & log', 'users']];
 var TITLES = { terbit: ['Unggah & terbitkan', 'Baca juknis, koreksi, lalu terbitkan ke seluruh toko'], promo: ['Promo tersimpan', 'Versi yang sedang dilihat toko'],
   artikel: ['List artikel promo', 'Excel list artikel per bulan, dipakai toko untuk cek stok promo'],
+  foto: ['Foto produk', 'File link foto per artikel & warna, tampil di cek stok toko'],
   toko: ['Daftar toko', 'Hanya No Site di sini yang bisa masuk'], aktif: ['Toko online & riwayat', 'Siapa yang sedang membuka halaman promo'] };
 function goA(v) { A.tab = v; var h = '#' + v; if (location.hash !== h) history.pushState(null, '', h); closeOv(); render(); window.scrollTo(0, 0); }
 window.addEventListener('popstate', function () { var v = (location.hash || '').slice(1); if (TITLES[v] || v === 'home') { A.tab = v; closeOv(); if (A.data) render(); } });
@@ -239,14 +241,14 @@ function render() {
   var v = $('#view');
   if (A.tab === 'home' || !TITLES[A.tab]) { A.tab = 'home'; v.innerHTML = viewHome(); return; }
   var T = TITLES[A.tab];
-  var body = A.tab === 'terbit' ? viewTerbit() : A.tab === 'promo' ? viewPromo() : A.tab === 'artikel' ? viewArtA() : A.tab === 'toko' ? viewToko() : viewAktif();
+  var body = A.tab === 'terbit' ? viewTerbit() : A.tab === 'promo' ? viewPromo() : A.tab === 'artikel' ? viewArtA() : A.tab === 'foto' ? viewFotoA() : A.tab === 'toko' ? viewToko() : viewAktif();
   v.innerHTML = '<section class="sheet"><div class="pagehead" style="margin:0"><button class="back" data-go="home" aria-label="Kembali">' + svg('back') + '</button>'
     + '<div><h1>' + T[0] + '</h1><p>' + T[1] + '</p></div></div></section>' + body;
   if (A.tab === 'aktif') loadLog();
 }
 var ATILES = [['terbit', 'Unggah juknis', 'upload', '#E46F3F', '#FDF0EA'], ['promo', 'Promo tersimpan', 'list', '#0F3192', '#EEF2FB'],
   ['toko', 'Daftar toko', 'store', '#107C41', '#E7F4EC'], ['tpl', 'Template toko', 'download', '#7A4FB5', '#F1EBFA'],
-  ['aktif', 'Toko online', 'users', '#1B47C2', '#E6EDFC'], ['log', 'Riwayat', 'history', '#5A6482', '#EEF1F6'],
+  ['aktif', 'Toko online', 'users', '#1B47C2', '#E6EDFC'], ['foto', 'Foto produk', 'image', '#D81B60', '#FCE4EC'],
   ['site', 'Halaman toko', 'ext', '#13806F', '#E3F4F0'], ['artikel', 'List artikel', 'sheet', '#C9531F', '#FDF0EA']];
 function viewHome() {
   var ms = A.data.months, last = ms[ms.length - 1], live = liveA();
@@ -894,6 +896,78 @@ document.addEventListener('change', function (e) {
 document.addEventListener('dragover', function (e) { var d = e.target.closest && e.target.closest('#dropArt'); if (d) { e.preventDefault(); d.classList.add('over'); } });
 document.addEventListener('dragleave', function (e) { var d = e.target.closest && e.target.closest('#dropArt'); if (d) d.classList.remove('over'); });
 document.addEventListener('drop', function (e) { var d = e.target.closest && e.target.closest('#dropArt'); if (!d) return; e.preventDefault(); d.classList.remove('over'); if (e.dataTransfer.files[0]) artReadFile(e.dataTransfer.files[0]); });
+
+/* ============================================================ foto produk */
+function viewFotoA() {
+  var F = A.data.foto, W = A.fotoW, n = function (v) { return Number(v || 0).toLocaleString('id-ID'); };
+  var h = '<div class="card"><h2>Foto yang dipakai sekarang</h2>';
+  if (F) h += '<div class="g2"><div class="fs" style="margin:0"><h4>' + n(F.keys) + ' artikel + warna</h4><div class="small">' + n(F.imgs) + ' foto · tanggal update file ' + esc(F.tanggal || '–') + '</div></div>'
+      + '<div class="fs" style="margin:0"><h4>Diunggah ' + esc(String(F.at || '').slice(0, 16).replace('T', ' ')) + '</h4><div class="small muted">oleh ' + esc(F.by || '') + ' · ' + esc(F.file || '') + '</div></div></div>'
+      + '<div class="row-act"><button class="btn sm danger" data-act="fotoDel">Hapus semua foto</button></div>';
+  else h += '<div class="empty">Belum ada foto produk. Unggah file link foto di bawah.</div>';
+  h += '</div><div class="card"><h2>Unggah file link foto</h2><p class="lead">Format: kolom Seller SKU, Color (mis. 910000058.BLK), Desc, Gambar1–Gambar8. Foto disimpan per artikel + warna, jadi semua ukuran memakai foto yang sama. Unggahan baru <b>menggantikan</b> seluruh foto lama.</p>'
+    + '<label class="drop" id="dropFoto"><input type="file" id="fotoFile" accept=".xlsx,.xls"><b>Pilih file link foto</b><span class="small muted">atau seret ke sini · file besar (40 ribu baris) butuh beberapa detik</span></label>'
+    + '<div id="fotoStat" class="small muted" style="margin-top:10px"></div></div>';
+  if (W) {
+    h += '<div class="card" style="border-left:5px solid var(--orange)"><h2>Periksa sebelum disimpan</h2><p class="lead">' + esc(W.file) + ' · sheet “' + esc(W.r.sheet) + '”</p>'
+      + '<div class="g2" style="margin-bottom:12px"><div class="fs" style="margin:0"><h4>' + n(W.r.nKey) + ' artikel + warna</h4><div class="small">dari ' + n(W.r.nSku) + ' SKU · ' + n(W.r.nImg) + ' foto</div></div>'
+      + '<div class="fs" style="margin:0"><h4>Tanggal update ' + esc(W.r.tanggal || '–') + '</h4><div class="small muted">' + (W.r.skipped ? n(W.r.skipped) + ' baris tanpa SKU/foto dilewati · ' : '') + W.rows.length + ' potongan · ±' + Math.round(W.size / 1024) + ' KB</div></div></div>'
+      + '<div class="small" style="font-weight:700;margin-bottom:6px">Contoh foto (ketuk untuk memperbesar)</div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:8px">' + W.r.sample.map(function (x) {
+          var c = W.r.map[x[0]] || [];
+          return '<button class="pth" data-fprev="' + esc(x[0]) + '" title="' + esc(x[1]) + '"><img loading="lazy" src="' + esc(window.Foto.url(c[0], null, 120)) + '" alt=""><span class="n">' + c.length + '</span></button>';
+        }).join('') + '</div>'
+      + '<div class="row-act"><button class="btn primary" data-act="fotoSave">Simpan foto produk</button><button class="btn" data-act="fotoCancel">Batalkan</button><span class="small muted" id="fotoProg"></span></div></div>';
+  }
+  return h;
+}
+async function fotoRead(f) {
+  var st = $('#fotoStat'); if (st) st.innerHTML = '<span class="spin"></span>Membaca ' + esc(f.name) + '… (file besar, tunggu sebentar)';
+  try {
+    if (!(await window.Artikel.needXLSX())) throw new Error('Pembaca Excel gagal dimuat. Cek koneksi internet.');
+    await new Promise(function (r) { setTimeout(r, 30); });
+    var wb = window.XLSX.read(await f.arrayBuffer(), { type: 'array', cellDates: true });
+    var r = window.Foto.readBook(wb), rows = window.Foto.toRows(r.map), size = 0;
+    rows.forEach(function (x) { size += x[2].length; });
+    A.fotoW = { file: f.name, r: r, rows: rows, size: size };
+    render();
+  } catch (e) { if (st) st.innerHTML = '<span style="color:var(--bad)">' + esc(e.message || String(e)) + '</span>'; }
+}
+async function fotoSave() {
+  var W = A.fotoW; if (!W) return;
+  if (!confirm('Simpan ' + W.r.nKey.toLocaleString('id-ID') + ' artikel+warna (' + W.r.nImg.toLocaleString('id-ID') + ' foto)?' + (A.data.foto ? '\nFoto lama akan diganti seluruhnya.' : ''))) return;
+  var rows = W.rows, per = 15, total = Math.ceil(rows.length / per), pg = function (t) { var e = $('#fotoProg'); if (e) e.textContent = t; };
+  $$('[data-act=fotoSave],[data-act=fotoCancel]').forEach(function (b) { b.disabled = true; });
+  try {
+    for (var i = 0, k = 0; i < rows.length; i += per, k++) {
+      pg('Mengunggah bagian ' + (k + 1) + ' dari ' + total + '…');
+      var last = i + per >= rows.length;
+      var r = await post({ a: 'fotoSave', reset: i === 0, rows: rows.slice(i, i + per),
+        meta: last ? { file: W.file, tanggal: W.r.tanggal, keys: W.r.nKey, sku: W.r.nSku, imgs: W.r.nImg, bases: window.Foto.BASES } : null });
+      if (last) A.data = normData(r.data);
+    }
+    A.fotoW = null; render(); toast('Foto produk tersimpan. Toko langsung melihatnya di cek stok.');
+  } catch (e) {
+    pg(''); $$('[data-act=fotoSave],[data-act=fotoCancel]').forEach(function (b) { b.disabled = false; });
+    toast('Gagal menyimpan: ' + (e.message || e.code) + '. Coba simpan ulang.', 8000);
+  }
+}
+document.addEventListener('click', async function (e) {
+  var pv = e.target.closest && e.target.closest('[data-fprev]');
+  if (pv && A.fotoW) { window.Foto.open(window.Foto.gallery(A.fotoW.r.map[pv.dataset.fprev]), 0, { title: esc(pv.title), sub: esc(pv.dataset.fprev) }); return; }
+  var b = e.target.closest && e.target.closest('[data-act]'); if (!b || A.tab !== 'foto') return;
+  var k = b.dataset.act;
+  if (k === 'fotoSave') fotoSave();
+  else if (k === 'fotoCancel') { A.fotoW = null; render(); }
+  else if (k === 'fotoDel') {
+    if (!confirm('Hapus semua foto produk? Toko tidak akan melihat foto sampai diunggah lagi.')) return;
+    try { var r = await post({ a: 'fotoDel' }); A.data = normData(r.data); render(); toast('Foto produk dihapus.'); } catch (er) { toast('Gagal: ' + er.message); }
+  }
+});
+document.addEventListener('change', function (e) { if (e.target.id === 'fotoFile' && e.target.files[0]) { fotoRead(e.target.files[0]); e.target.value = ''; } });
+document.addEventListener('dragover', function (e) { var d = e.target.closest && e.target.closest('#dropFoto'); if (d) { e.preventDefault(); d.classList.add('over'); } });
+document.addEventListener('dragleave', function (e) { var d = e.target.closest && e.target.closest('#dropFoto'); if (d) d.classList.remove('over'); });
+document.addEventListener('drop', function (e) { var d = e.target.closest && e.target.closest('#dropFoto'); if (!d) return; e.preventDefault(); d.classList.remove('over'); if (e.dataTransfer.files[0]) fotoRead(e.dataTransfer.files[0]); });
 
 (function init() {
   if ((!/^https:\/\/script\.google(usercontent)?\.com\//.test(CFG.API || '') || /GANTI_DENGAN/.test(CFG.API))) {
