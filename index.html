@@ -225,11 +225,13 @@ table.gt{border-collapse:separate;border-spacing:0;font-size:11px;width:100%;min
   <form class="box" onsubmit="return false">
     <h1>Masuk toko</h1>
     <p class="lead">Ketik No Site toko kamu untuk membuka promo yang berlaku.</p>
-    <label for="siteIn">No Site</label>
-    <input id="siteIn" class="inp" inputmode="numeric" autocomplete="off" placeholder="2278" maxlength="8">
+    <label for="siteIn" id="siteLbl">No Site</label>
+    <input id="siteIn" class="inp" inputmode="numeric" autocomplete="username" placeholder="2278" maxlength="24">
+    <div id="pwWrap" hidden style="margin-top:10px"><label for="pwIn">Password admin</label><input id="pwIn" class="inp" type="password" autocomplete="current-password"></div>
     <button class="btn primary block" id="gateGo" style="margin-top:12px">Masuk</button>
     <div class="err" id="gateErr"></div>
     <p class="small muted" style="margin:6px 0 0">No Site belum terdaftar? Hubungi admin area.</p>
+    <p class="small" style="margin:10px 0 0;text-align:center"><button type="button" class="lnk" id="admMode">Masuk sebagai admin</button></p>
   </form>
 </div>
 
@@ -336,22 +338,36 @@ function post(body) {
 }
 
 /* ---------------------------------------------------------- login --- */
+function setAdminMode(on) {
+  var i = $('#siteIn'); App._admMode = on;
+  i.setAttribute('inputmode', on ? 'text' : 'numeric'); i.placeholder = on ? 'ID admin, mis. 220450-Nama' : '2278';
+  $('#siteLbl').textContent = on ? 'ID admin' : 'No Site'; $('#pwWrap').hidden = !on;
+  $('#admMode').textContent = on ? 'Kembali masuk dengan No Site' : 'Masuk sebagai admin';
+  $('#gateErr').textContent = ''; i.focus();
+}
 function showGate(msg) { document.body.classList.add('locked'); $('#gate').hidden = false; $('#gateErr').textContent = msg || ''; setTimeout(function () { $('#siteIn').focus(); }, 60); }
 function hideGate() { document.body.classList.remove('locked'); $('#gate').hidden = true; }
 function doLogin() {
-  var code = ($('#siteIn').value || '').trim(), b = $('#gateGo');
-  if (!code) { $('#gateErr').textContent = 'Isi No Site toko dulu.'; return; }
+  var code = ($('#siteIn').value || '').trim(), b = $('#gateGo'), pw = $('#pwIn').value;
+  if (!code) { $('#gateErr').textContent = App._admMode ? 'Isi ID admin dulu.' : 'Isi No Site toko dulu.'; return; }
+  if (/[A-Za-z]/.test(code) && !App._admMode) { setAdminMode(true); $('#siteIn').value = code; $('#pwIn').focus(); return; }
   b.disabled = true; b.textContent = 'Memeriksa…';
-  post({ a: 'login', site: code, ua: navigator.userAgent.slice(0, 100) }).then(function (r) {
+  post({ a: 'login', site: code, pw: pw, ua: navigator.userAgent.slice(0, 100) }).then(function (r) {
     b.disabled = false; b.textContent = 'Masuk';
-    App.token = r.token; App.site = r.site; LS.set('promo_tok', r.token);
+    App.token = r.token; App.site = r.site; App.admin = !!r.admin; LS.set('promo_tok', r.token); $('#pwIn').value = '';
+    if (r.admin) { LS.set('promo_admin', r.token); LS.set('promo_adminName', r.site.id || r.site.name); }
     hideGate(); boot();
-  }).catch(function (e) { b.disabled = false; b.textContent = 'Masuk'; $('#gateErr').textContent = e.message || 'Gagal masuk.'; });
+  }).catch(function (e) {
+    b.disabled = false; b.textContent = 'Masuk';
+    if (e.code === 'needpw') { if (!App._admMode) { setAdminMode(true); $('#siteIn').value = code; } $('#pwIn').focus(); }
+    $('#gateErr').textContent = e.message || 'Gagal masuk.';
+  });
 }
 function doLogout() {
   if (!confirm('Keluar dari halaman promo?')) return;
   post({ a: 'logout' }).catch(function () {});
-  App.token = ''; LS.set('promo_tok', ''); stopPing();
+  if (App.admin) LS.set('promo_admin', '');
+  App.token = ''; App.admin = false; LS.set('promo_tok', ''); stopPing();
   $('#siteIn').value = ''; showGate('Kamu sudah keluar.');
 }
 
@@ -359,7 +375,7 @@ function doLogout() {
 function boot() {
   $('#view').innerHTML = '<div class="loading"><span class="spin"></span>Memuat promo…</div>';
   api('boot').then(function (r) {
-    App.site = r.site; App.data = normData(r.data); App.online = r.online || []; App.today = r.serverDate || todayISO();
+    App.site = r.site; App.admin = !!r.admin; App.data = normData(r.data); App.online = r.online || []; App.today = r.serverDate || todayISO();
     if (!App.month || r.data.months.indexOf(App.month) < 0) App.month = pickMonth(r.data.months);
     readHash(); render(); startPing();
   }).catch(function (e) {
@@ -442,10 +458,11 @@ function renderChrome() {
     var bd = n[0] === 'memo' && memoN ? '<span class="bd">' + memoN + '</span>' : n[0] === 'akun' && live ? '<span class="bd">' + live + '</span>' : '';
     return '<button data-go="' + n[0] + '" class="' + (App.view === n[0] ? 'on' : '') + '">' + svg(n[2]) + n[1] + bd + '</button>';
   }).join('');
-  $('#sfoot').innerHTML = 'Masuk sebagai<b>' + esc(App.site.code) + (App.site.name ? ' · ' + esc(App.site.name) : '') + '</b>'
-    + '<button class="btn sm block" id="sOut">Keluar</button>';
+  $('#sfoot').innerHTML = App.admin
+    ? 'Masuk sebagai<b><span class="admtag">ADMIN</span>' + esc(App.site.name) + '</b><a class="btn sm block" href="admin.html" style="display:block;text-align:center;text-decoration:none;margin-top:10px">Buka halaman admin</a><button class="btn sm block" id="sOut">Keluar</button>'
+    : 'Masuk sebagai<b>' + esc(App.site.code) + (App.site.name ? ' · ' + esc(App.site.name) : '') + '</b><button class="btn sm block" id="sOut">Keluar</button>';
   var TT = { home: 'Beranda', jalan: 'Promo hari ini', kalender: 'Kalender promo', semua: 'Semua promo', memo: 'Memo & update', artikel: 'List artikel', cek: 'Cek stok promo', akun: 'Toko online' };
-  $('#tbTitle').innerHTML = esc(TT[App.view] || 'Beranda') + '<small>' + esc(App.site.code + ' · ' + (App.site.name || '')) + (App.month ? ' · Juknis ' + fmtMonth(App.month) : '') + '</small>';
+  $('#tbTitle').innerHTML = esc(TT[App.view] || 'Beranda') + '<small>' + (App.admin ? 'ADMIN · ' + esc(App.site.name || '') : esc(App.site.code + ' · ' + (App.site.name || ''))) + (App.month ? ' · Juknis ' + fmtMonth(App.month) : '') + '</small>';
   $('#tbOnline').innerHTML = svg('users') + (live ? '<span class="bd">' + live + '</span>' : '');
   $('#tbOut').innerHTML = svg('out');
 }
@@ -494,7 +511,7 @@ function vHome() {
     + '<div class="stat"><button data-go="jalan" data-tab="on"><b>' + S.on.length + '</b><small>berjalan hari ini</small></button>'
     + '<button data-go="jalan" data-tab="soon"><b>' + S.soon.length + '</b><small>akan berjalan</small></button>'
     + '<button data-go="semua"><b>' + list.length + '</b><small>total program</small></button></div>'
-    + '<div class="who"><span>Toko <b>' + esc(App.site.code) + (App.site.name ? ' · ' + esc(App.site.name) : '') + '</b></span><span>' + fmtDate(App.today) + '</span><span class="chip live" style="background:rgba(255,255,255,.12);color:#fff">' + live + ' toko online</span></div></section>'
+    + '<div class="who"><span>' + (App.admin ? '<span class="admtag">ADMIN</span><b>' + esc(App.site.name) + '</b>' : 'Toko <b>' + esc(App.site.code) + (App.site.name ? ' · ' + esc(App.site.name) : '') + '</b>') + '</span>' + adminOnlineTxt() + '<span>' + fmtDate(App.today) + '</span><span class="chip live" style="background:rgba(255,255,255,.12);color:#fff">' + live + ' toko online</span></div></section>'
     + '<div class="qgrid">' + tiles.map(function (t, i) {
         return '<button class="ic" data-tile="' + i + '" style="--c:' + t[3] + ';--t:' + t[4] + '"><span class="i">' + svg(t[2]) + '</span><span>' + t[1] + '</span>' + (t[5] ? '<span class="bd">' + t[5] + '</span>' : '') + '</button>';
       }).join('') + '</div>';
@@ -589,10 +606,16 @@ function vAkun() {
     return '<div class="r"><span class="av">' + esc(String(o.code).slice(0, 4)) + '</span><span><b>' + esc(o.name || o.code) + '</b><small>No Site ' + esc(o.code) + '</small></span>'
       + '<span class="t">' + (o.ago < 180 ? '<span class="chip live">online</span>' : Math.round(o.ago / 60) + ' mnt lalu') + '</span></div>';
   };
-  return '<section class="sheet">' + head('Akun toko', '')
-    + '<div class="sum"><span class="lbl">Masuk sebagai</span><div class="big"><b style="font-size:24px">' + esc(App.site.code) + '</b></div>'
-    + '<div class="small muted">' + esc(App.site.name || '') + '</div>'
+  var adm = (App.online || []).filter(function (o) { return o.kind === 'admin' && o.ago < 3600; });
+  var admRows = adm.map(function (o) {
+    return '<div class="r"><span class="av" style="background:var(--orange);color:#fff">ADM</span><span><b>' + esc(o.name || 'Admin') + ' <span class="admtag">ADMIN</span></b><small>Admin promo</small></span>'
+      + '<span class="t">' + (o.ago < 180 ? '<span class="chip live">online</span>' : Math.round(o.ago / 60) + ' mnt lalu') + '</span></div>';
+  }).join('');
+  return '<section class="sheet">' + head(App.admin ? 'Akun admin' : 'Akun toko', '')
+    + '<div class="sum"><span class="lbl">Masuk sebagai</span><div class="big"><b style="font-size:24px">' + (App.admin ? esc(App.site.name) + ' <span class="admtag">ADMIN</span>' : esc(App.site.code)) + '</b></div>'
+    + '<div class="small muted">' + (App.admin ? 'Admin promo · ID ' + esc(App.site.id || (App.site.code + '-' + App.site.name)) : esc(App.site.name || '')) + '</div>'
     + '<div class="row"><button class="btn sm" id="aRefresh">' + 'Muat ulang data' + '</button><button class="btn sm danger" id="aOut">Keluar</button></div></div></section>'
+    + (admRows ? '<section class="panel"><div class="ph"><h2>Admin</h2></div><div class="olist">' + admRows + '</div></section>' : '')
     + '<section class="panel"><div class="ph"><h2>Toko online sekarang</h2><span class="sub">' + live.length + ' toko</span></div>'
     + '<div class="olist">' + (live.map(row).join('') || '<div class="empty">Belum ada toko lain yang online.</div>') + '</div></section>'
     + (recent.length ? '<section class="panel"><div class="ph"><h2>Baru saja aktif</h2></div><div class="olist">' + recent.map(row).join('') + '</div></section>' : '');
@@ -1117,6 +1140,15 @@ function openInfo(k) {
   var d = document.createElement('div'); d.innerHTML = html; document.body.appendChild(d.firstChild); document.body.style.overflow = 'hidden';
 }
 document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('[data-info]'); if (b) { e.stopPropagation(); openInfo(+b.dataset.info); } }, true);
+
+/* ===================================================== admin terlihat oleh pengunjung */
+function adminOnlineTxt() {
+  var a = (App.online || []).filter(function (o) { return o.kind === 'admin' && o.ago < 180; });
+  if (!a.length || App.admin) return '';
+  return '<span class="chip" style="background:rgba(232,80,10,.9);color:#fff">Admin online: ' + a.map(function (o) { return esc(o.name); }).join(', ') + '</span>';
+}
+document.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('#admMode')) { e.preventDefault(); setAdminMode(!App._admMode); } });
+document.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target && e.target.id === 'pwIn') { e.preventDefault(); doLogin(); } });
 
 (function init() {
   if (!/^https:\/\/script\.google(usercontent)?\.com\//.test(CFG.API || '') || /GANTI_DENGAN/.test(CFG.API)) {
