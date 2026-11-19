@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Admin · Promo Eigerindo</title>
-<meta name="theme-color" content="#0F3192">
+<meta name="theme-color" content="#073763">
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><rect width=%2264%22 height=%2264%22 rx=%2216%22 fill=%22%230F3192%22/><text x=%2232%22 y=%2245%22 font-family=%22Arial%22 font-weight=%22900%22 font-size=%2238%22 fill=%22white%22 text-anchor=%22middle%22>E</text><circle cx=%2250%22 cy=%2214%22 r=%226%22 fill=%22%23E46F3F%22/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="app.css">
 <style>
 /* ---------- khusus halaman admin ---------- */
@@ -56,12 +56,13 @@ textarea.inp{min-height:80px;resize:vertical}
 @media (max-width:640px){.pi{flex-direction:column}.pi .act{width:100%}}
 @media (min-width:960px){.card{padding:22px 24px;margin-top:16px;border-radius:22px}}
 </style>
+<link rel="stylesheet" href="ppt.css">
 </head>
 <body class="locked">
 
 <div class="gate" id="gate">
   <img class="glogo" src="img/logo-white.png" alt="Eigerindo MPI">
-  <p class="gsub">Admin promo nasional</p>
+  <div class="gcover"><b>Admin Juknis</b><span>Program Promo</span><i></i><small>Unggah, koreksi, terbitkan ke seluruh toko</small></div>
   <form class="box" onsubmit="return false">
     <h1>Masuk admin</h1>
     <p class="lead">Unggah juknis dan terbitkan ke seluruh toko.</p>
@@ -71,7 +72,7 @@ textarea.inp{min-height:80px;resize:vertical}
     <div class="err" id="aErr"></div>
     <button type="button" class="btn sm" id="aTest" style="margin-top:4px">Tes koneksi server</button>
     <div class="small muted" id="aTestOut" style="margin-top:8px;line-height:1.5"></div>
-    <div class="small muted" style="margin-top:10px">Versi halaman: 9</div>
+    <div class="small muted" style="margin-top:10px">Versi halaman: 10</div>
   </form>
 </div>
 
@@ -114,7 +115,8 @@ var fmtDateS = function (iso) { if (!iso) return '–'; var a = iso.split('-'); 
 function todayISO() { var d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
 function toast(m, ms) { var t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('on'); }, ms || 3000); }
 var LS = { get: function (k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }, set: function (k, v) { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch (e) {} } };
-var colorOf = function (c) { return (CFG.CATS || {})[c] || (CFG.CATS || {}).Lainnya || '#5A6482'; };
+var PPT_CAT = { Event: '#006064', Reguler: '#1E40AF', Bazaar: '#E8500A', Banking: '#1A237E', EAC: '#6A1B9A', Tambahan: '#AD1457', Lainnya: '#5A6482' };
+var colorOf = function (c) { return PPT_CAT[c] || (CFG.CATS || {})[c] || PPT_CAT.Lainnya; };
 function rangeTxt(rs) {
   return (rs || []).map(function (r) {
     if (r[0] === r[1]) return fmtDateS(r[0]);
@@ -520,7 +522,7 @@ function repRow(name, fields, v, i) {
 }
 function openPromoEditor(idx) {
   var p = A.W.promos[idx];
-  var cats = Object.keys(CFG.CATS || { Lainnya: 1 });
+  var cats = Object.keys(PPT_CAT);
   var html = '<div class="ov" id="ov"><div class="drawer"><div class="dtop"><div class="grab"></div><button class="btn sm" data-close>Tutup</button></div>'
     + '<h2>Ubah promo</h2>'
     + '<div class="fs"><h4>Identitas</h4><div class="g2">'
