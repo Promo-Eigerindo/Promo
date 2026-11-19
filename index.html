@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Promo Eigerindo</title>
-<meta name="theme-color" content="#0F3192">
+<meta name="theme-color" content="#073763">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><rect width=%2264%22 height=%2264%22 rx=%2216%22 fill=%22%230F3192%22/><text x=%2232%22 y=%2245%22 font-family=%22Arial%22 font-weight=%22900%22 font-size=%2238%22 fill=%22white%22 text-anchor=%22middle%22>E</text><circle cx=%2250%22 cy=%2214%22 r=%226%22 fill=%22%23E46F3F%22/></svg>">
 <link rel="apple-touch-icon" href="img/logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="app.css">
 <style>
 /* ---------- kartu promo ---------- */
@@ -213,12 +213,13 @@ table.gt{border-collapse:separate;border-spacing:0;font-size:11px;width:100%;min
 .lvt td{padding:7px 10px;border-top:1px solid var(--line)}
 @media (min-width:960px){.ktiles{grid-template-columns:repeat(4,minmax(0,1fr))}.kt b{font-size:28px}}
 </style>
+<link rel="stylesheet" href="ppt.css">
 </head>
 <body class="locked">
 
 <div class="gate" id="gate">
   <img class="glogo" src="img/logo-white.png" alt="Eigerindo MPI">
-  <p class="gsub">Informasi promo untuk seluruh toko</p>
+  <div class="gcover"><b>Petunjuk Teknis</b><span>Program Promo</span><i></i><small>Untuk seluruh toko Eigerindo</small></div>
   <form class="box" onsubmit="return false">
     <h1>Masuk toko</h1>
     <p class="lead">Ketik No Site toko kamu untuk membuka promo yang berlaku.</p>
@@ -284,7 +285,7 @@ function normMonth(v) {
 }
 function normData(d) {
   if (!d) return d;
-  (d.promos || []).forEach(function (p) { p.month = normMonth(p.month); });
+  (d.promos || []).forEach(function (p) { p.month = normMonth(p.month); p.cat = normCat(p.cat); });
   (d.memos || []).forEach(function (x) { x.month = normMonth(x.month); });
   var b = {}; Object.keys(d.bulan || {}).forEach(function (k) { b[normMonth(k)] = d.bulan[k]; }); d.bulan = b;
   var ms = {}; (d.months || []).forEach(function (k) { ms[normMonth(k)] = 1; });
@@ -292,7 +293,20 @@ function normData(d) {
   return d;
 }
 /* urutan prioritas kategori: Event paling atas */
-var CAT_ORDER = CFG.ORDER || ['Event', 'Reguler', 'Banking', 'Bazaar', 'Lainnya'];
+var CAT_ORDER = CFG.ORDER || ['Event', 'Reguler', 'Bazaar', 'Banking', 'EAC', 'Tambahan', 'Lainnya'];
+var PPT_CAT = { Reguler: '#1E40AF', Event: '#006064', Bazaar: '#E8500A', Banking: '#1A237E', EAC: '#6A1B9A', Tambahan: '#AD1457', Lainnya: '#5A6482' };
+var CAT_LABEL = { Bazaar: 'Bazaar + FS' };
+function normCat(c) {
+  var t = String(c || '').toLowerCase();
+  if (/regul/.test(t)) return 'Reguler';
+  if (/event/.test(t)) return 'Event';
+  if (/bazaa?r|factory|\bfs\b/.test(t)) return 'Bazaar';
+  if (/bank|kartu/.test(t)) return 'Banking';
+  if (/\beac\b|adventure club/.test(t)) return 'EAC';
+  if (/tambah|lain2|additional/.test(t)) return 'Tambahan';
+  var s = String(c || '').trim(); return s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : 'Lainnya';
+}
+function catLabel(c) { return CAT_LABEL[c] || c; }
 function catRank(c) { var i = CAT_ORDER.indexOf(c); return i < 0 ? CAT_ORDER.length : i; }
 function byPrio(a, b) { return catRank(a.cat) - catRank(b.cat) || (a.sort || 0) - (b.sort || 0); }
 
@@ -375,7 +389,7 @@ function rangeTxt(rs) {
     return fmtDateS(r[0]) + ' – ' + fmtDateS(r[1]);
   }).join(', ');
 }
-function colorOf(cat) { return (CFG.CATS || {})[cat] || (CFG.CATS || {}).Lainnya || '#5A6482'; }
+function colorOf(cat) { return PPT_CAT[cat] || (CFG.CATS || {})[cat] || PPT_CAT.Lainnya; }
 function badgeOf(S) {
   if (S.on) {
     if (S.left === 0) return '<span class="tg hot">Hari terakhir</span>';
@@ -387,7 +401,7 @@ function badgeOf(S) {
 }
 function promoCard(p) {
   return '<button class="pcard" data-p="' + esc(p.id) + '" style="--c:' + colorOf(p.cat) + '">'
-    + '<span class="cat">' + esc(p.cat) + '</span><b>' + esc(p.title) + '</b>' + badgeOf(state(p))
+    + '<span class="cat">' + esc(catLabel(p.cat)) + '</span><b>' + esc(p.title) + '</b>' + badgeOf(state(p))
     + '<span class="meta"><span>' + svg('cal') + esc(rangeTxt(p.ranges)) + (p.exact ? '' : ' · lihat ketentuan') + '</span>'
     + (p.minTrx && !/tidak ada/i.test(p.minTrx) ? '<span>' + svg('tag') + 'Min. ' + esc(p.minTrx) + '</span>' : '')
     + (p.excel && p.excel.length ? '<span>' + svg('sheet') + p.excel.length + ' file list artikel</span>' : '') + '</span></button>';
@@ -428,7 +442,7 @@ function renderChrome() {
   $('#sfoot').innerHTML = 'Masuk sebagai<b>' + esc(App.site.code) + (App.site.name ? ' · ' + esc(App.site.name) : '') + '</b>'
     + '<button class="btn sm block" id="sOut">Keluar</button>';
   var TT = { home: 'Beranda', jalan: 'Promo hari ini', kalender: 'Kalender promo', semua: 'Semua promo', memo: 'Memo & update', artikel: 'List artikel', cek: 'Cek stok promo', akun: 'Toko online' };
-  $('#tbTitle').innerHTML = esc(TT[App.view] || 'Beranda') + '<small>' + esc(App.site.code + ' · ' + (App.site.name || '')) + '</small>';
+  $('#tbTitle').innerHTML = esc(TT[App.view] || 'Beranda') + '<small>' + esc(App.site.code + ' · ' + (App.site.name || '')) + (App.month ? ' · Juknis ' + fmtMonth(App.month) : '') + '</small>';
   $('#tbOnline').innerHTML = svg('users') + (live ? '<span class="bd">' + live + '</span>' : '');
   $('#tbOut').innerHTML = svg('out');
 }
@@ -439,7 +453,10 @@ function render() {
   document.title = CFG.BRAND || 'Promo Eigerindo';
   renderChrome();
   var fn = { home: vHome, jalan: vJalan, kalender: vKalender, semua: vSemua, memo: vMemo, artikel: vArtikel, cek: vCek, akun: vAkun }[App.view] || vHome;
-  $('#view').innerHTML = fn();
+  $('#view').innerHTML = fn() + slideFoot({ home: 'RINGKASAN', jalan: 'PROMO HARI INI', kalender: 'KALENDER PROMO', semua: 'SEMUA PROMO', memo: 'MEMO & UPDATE', artikel: 'LIST ARTIKEL', cek: 'CEK STOK PROMO', akun: 'TOKO ONLINE' }[App.view] || '');
+}
+function slideFoot(sec) {
+  return '<footer class="pfoot"><span>EIGER ADVENTURE &nbsp;|&nbsp; JUKNIS PROMO ' + esc(fmtMonth(App.month).toUpperCase()) + (sec ? ' &nbsp;|&nbsp; ' + esc(sec) : '') + '</span><img src="img/logo-white.png" alt="Eigerindo MPI"></footer>';
 }
 function head(title, sub) {
   return '<div class="pagehead"><button class="back" data-go="home" aria-label="Kembali">' + svg('back') + '</button><div><h1>' + esc(title) + '</h1>'
@@ -455,35 +472,53 @@ function countExcel(list) { var n = 0; list.forEach(function (p) { n += (p.excel
 
 function vHome() {
   var list = monthPromos(), S = split(list), memos = monthMemos(), B = App.data.bulan[App.month] || {}, live = liveSites().length;
+  var ms = App.data.months, m = App.month, mi = m ? +m.slice(5) - 1 : 0, n = m ? dimOf(m) : 30, yr = m ? m.slice(0, 4) : '';
+  var per = m ? '1 – ' + n + ' ' + MONL[mi].toUpperCase() + ' ' + yr : '–';
+  var sel = ms.length > 1 ? '<select id="mSel" aria-label="Pilih bulan">' + ms.slice().reverse().map(function (x) { return '<option value="' + x + '"' + (x === m ? ' selected' : '') + '>' + esc(B.period && x === m ? B.period : '1 – ' + dimOf(x) + ' ' + MONL[+x.slice(5) - 1].toUpperCase() + ' ' + x.slice(0, 4)) + '</option>'; }).join('') + '</select>' : esc(B.period || per);
   var tiles = [
-    ['jalan', 'Berjalan', 'zap', '#13806F', '#E3F4F0', S.on.length, { tab: 'on' }],
-    ['jalan', 'Akan datang', 'clock', '#C9531F', '#FDF0EA', S.soon.length, { tab: 'soon' }],
-    ['kalender', 'Kalender', 'cal', '#7A4FB5', '#F1EBFA', 0],
-    ['semua', 'Semua promo', 'list', '#0F3192', '#EEF2FB', 0],
-    ['memo', 'Memo', 'memo', '#E46F3F', '#FDF0EA', memos.length],
+    ['jalan', 'Promo hari ini', 'zap', '#1E8E3E', '#E6F4EA', S.on.length, { tab: 'on' }],
+    ['kalender', 'Kalender', 'cal', '#073763', '#EAF0F7', 0],
+    ['semua', 'Semua promo', 'list', '#1E40AF', '#E8EDFB', 0],
+    ['cek', 'Cek stok promo', 'search', '#E8500A', '#FDEFE7', 0],
     ['artikel', 'List artikel', 'sheet', '#107C41', '#E7F4EC', 0],
-    [B.fileJuknis ? 'pdf' : 'nopdf', 'Juknis PDF', 'file', '#C0392B', '#FDECEB', 0],
-    ['cek', 'Cek stok promo', 'search', '#C9531F', '#FDF0EA', 0]
+    ['memo', 'Memo & update', 'memo', '#AD1457', '#FBE7EF', memos.length],
+    [B.fileJuknis ? 'pdf' : 'nopdf', 'Juknis PDF', 'file', '#D32F2F', '#FDECEC', 0],
+    ['akun', 'Toko online', 'users', '#6A1B9A', '#F3E8FA', live]
   ];
-  var grid = '<div class="igrid">' + tiles.map(function (t, i) {
-    return '<button class="ic" data-tile="' + i + '" style="--c:' + t[3] + ';--t:' + t[4] + '"><span class="i">' + svg(t[2]) + '</span><span>' + t[1] + '</span>'
-      + (t[5] ? '<span class="bd">' + t[5] + '</span>' : '') + '</button>';
-  }).join('') + '</div>';
   App._tiles = tiles;
-  var sum = '<div class="sum">' + monthSelect()
-    + '<div class="big"><b>' + S.on.length + '</b><small>promo berjalan hari ini</small></div>'
-    + '<div class="small muted" style="margin-top:2px">' + esc(B.title || 'Promo ' + (App.month ? fmtMonth(App.month) : '')) + (B.period ? ' · ' + esc(B.period) : '') + '</div>'
-    + '<div class="row"><span class="chip">' + list.length + ' program</span><span class="chip">' + S.soon.length + ' akan datang</span>'
-    + (countExcel(list) ? '<span class="chip ok">' + countExcel(list) + ' list artikel</span>' : '') + '</div></div>';
-  var h = '<section class="sheet"><p class="hello">HALO, <b>' + esc(App.site.name || 'Toko ' + App.site.code) + '</b><span class="chip live">' + live + ' toko online</span></p>'
-    + '<div class="sumwrap">' + sum + grid + '</div></section>';
-  if (B.catatan) h += '<section class="panel" style="border-left:5px solid var(--orange)"><div class="ph"><h2>Catatan admin</h2></div><p style="margin:0;font-size:13.5px">' + esc(B.catatan) + '</p></section>';
+  var h = '<section class="cov"><img class="lg" src="img/logo-white.png" alt="Eigerindo MPI"><h1>Petunjuk Teknis<span>Program Promo</span></h1><div class="ln"></div>'
+    + '<div class="per">Periode: ' + sel + '</div>'
+    + '<div class="stat"><button data-go="jalan" data-tab="on"><b>' + S.on.length + '</b><small>berjalan hari ini</small></button>'
+    + '<button data-go="jalan" data-tab="soon"><b>' + S.soon.length + '</b><small>akan berjalan</small></button>'
+    + '<button data-go="semua"><b>' + list.length + '</b><small>total program</small></button></div>'
+    + '<div class="who"><span>Toko <b>' + esc(App.site.code) + (App.site.name ? ' · ' + esc(App.site.name) : '') + '</b></span><span>' + fmtDate(App.today) + '</span><span class="chip live" style="background:rgba(255,255,255,.12);color:#fff">' + live + ' toko online</span></div></section>'
+    + '<div class="qgrid">' + tiles.map(function (t, i) {
+        return '<button class="ic" data-tile="' + i + '" style="--c:' + t[3] + ';--t:' + t[4] + '"><span class="i">' + svg(t[2]) + '</span><span>' + t[1] + '</span>' + (t[5] ? '<span class="bd">' + t[5] + '</span>' : '') + '</button>';
+      }).join('') + '</div>';
+  if (B.catatan) h += '<section class="panel" style="border-left:6px solid var(--orange)"><div class="ph"><h2>Catatan admin</h2></div><p style="margin:0;font-size:13.5px">' + esc(B.catatan) + '</p></section>';
+  h += ringkasan(list, per);
   h += '<section class="panel"><div class="ph"><h2>Sedang berjalan</h2><button class="more" data-go="jalan" data-tab="on">Selengkapnya</button></div>'
     + (S.on.length ? '<div class="hscroll">' + S.on.map(promoCard).join('') + '</div>' : '<div class="empty">Tidak ada promo yang berjalan hari ini.</div>') + '</section>';
   h += '<section class="panel"><div class="ph"><h2>Akan berjalan</h2><button class="more" data-go="jalan" data-tab="soon">Selengkapnya</button></div>'
     + (S.soon.length ? '<div class="hscroll">' + S.soon.map(promoCard).join('') + '</div>' : '<div class="empty">Belum ada promo berikutnya di bulan ini.</div>') + '</section>';
   if (memos.length) h += '<section class="panel"><div class="ph"><h2>Memo terbaru</h2><button class="more" data-go="memo">Selengkapnya</button></div>' + memoCard(memos[memos.length - 1]) + '</section>';
   return h;
+}
+/* papan "Ringkasan Program Promo" seperti slide 2 juknis */
+function ringkasan(list, per) {
+  if (!list.length) return '';
+  var cats = []; list.forEach(function (p) { if (cats.indexOf(p.cat) < 0) cats.push(p.cat); });
+  cats.sort(function (a, b) { return catRank(a) - catRank(b); });
+  var m = App.month, mi = +m.slice(5) - 1;
+  return '<section class="slide"><div class="sl-h"><h2>Ringkasan Program Promo ' + MON[mi].toUpperCase() + '. ' + m.slice(0, 4) + '</h2><span>' + esc(per) + ' | ' + list.length + ' program</span></div>'
+    + '<div class="sl-b"><div class="rk" style="--n:' + Math.min(cats.length, 6) + '">' + cats.map(function (c) {
+        var L = list.filter(function (p) { return p.cat === c; });
+        return '<div class="rkc" style="--c:' + colorOf(c) + '"><div class="rk-h">' + esc(catLabel(c)) + '</div><div class="rk-n"><b>' + L.length + '</b><small>Promo</small></div><ul>'
+          + L.map(function (p) {
+              var S = state(p), st = S.on ? '<span class="on">● berjalan' + (S.left != null && S.left <= 3 ? ', ' + (S.left === 0 ? 'hari terakhir' : S.left + ' hari lagi') : '') + '</span>' : S.next ? '<span class="nx">mulai ' + fmtDateS(S.next) + '</span>' : '<span class="ed">selesai</span>';
+              return '<li><button data-p="' + esc(p.id) + '"><span>' + esc(shortT(p.title)) + (p.exact && !isWhole(p, m) ? ' (' + esc(rangeTxt(p.ranges)) + ')' : '') + st + '</span></button></li>';
+            }).join('') + '</ul></div>';
+      }).join('') + '</div></div></section>';
 }
 function vJalan() {
   var S = split(monthPromos()), t = App.tab || 'on', L = S[t] || [];
@@ -499,6 +534,7 @@ function vKalender() {
   return '<section class="sheet">' + head('Kalender promo', 'Ketuk bar untuk detail promo, ketuk tanggal untuk daftar promonya')
     + '<div class="sum">' + monthSelect() + '</div></section>'
     + '<section class="panel kal">' + kalender(list, sel) + '</section>'
+    + timeline(list)
     + (sel ? '<section class="panel"><div class="ph"><h2>' + DOW[dowOf(sel)] + ', ' + fmtDateS(sel) + '</h2><span class="sub">' + dayList.length + ' promo</span></div>'
       + (dayList.length ? '<div class="cards">' + dayList.map(promoCard).join('') + '</div>' : '<div class="empty">Tidak ada promo bertanggal di hari ini.</div>') + '</section>' : '');
 }
@@ -514,8 +550,11 @@ function vSemua() {
   return '<section class="sheet">' + head('Semua promo', fmtMonth(App.month) + ' · ' + list.length + ' program')
     + '<div class="filters"><input class="inp" id="q" type="search" placeholder="Cari nama promo, produk, syarat…" value="' + esc(App.q) + '">'
     + '<div class="seg"><button data-cat="" class="' + (App.cat ? '' : 'on') + '">Semua</button>'
-    + cats.map(function (c) { return '<button data-cat="' + esc(c) + '" class="' + (App.cat === c ? 'on' : '') + '">' + esc(c) + '</button>'; }).join('') + '</div></div>'
-    + '<div id="semuaList">' + (f.length ? '<div class="cards">' + f.map(promoCard).join('') + '</div>' : '<div class="empty">Tidak ada promo yang cocok.</div>') + '</div></section>';
+    + cats.map(function (c) { return '<button data-cat="' + esc(c) + '" class="' + (App.cat === c ? 'on' : '') + '">' + esc(catLabel(c)) + '</button>'; }).join('') + '</div></div>'
+    + '<div id="semuaList">' + (f.length ? cats.filter(function (c) { return f.some(function (p) { return p.cat === c; }); }).map(function (c) {
+        var L = f.filter(function (p) { return p.cat === c; });
+        return '<div class="pdiv" style="--c:' + colorOf(c) + '"><h2>Promo<span>' + esc(catLabel(c)) + '</span></h2><small>' + L.length + ' promo</small></div><div class="cards">' + L.map(promoCard).join('') + '</div>';
+      }).join('') : '<div class="empty">Tidak ada promo yang cocok.</div>') + '</div></section>';
 }
 function vMemo() {
   var m = monthMemos(), B = App.data.bulan[App.month] || {};
@@ -559,8 +598,37 @@ function memoCard(m) {
     + (m.link ? '<p style="margin:10px 0 0"><a href="' + esc(m.link) + '" target="_blank" rel="noopener">Buka file memo</a></p>' : '') + '</div>';
 }
 
+/* ------------------------------------------------------- timeline --- */
+function timeline(list) {
+  var m = App.month; if (!m || !list.length) return '';
+  var n = dimOf(m), mi = +m.slice(5) - 1, bars = list.filter(function (p) { return !isWhole(p, m); }), whole = list.filter(function (p) { return isWhole(p, m); });
+  bars.sort(function (a, b) { var x = (a.ranges[0] || [''])[0], y = (b.ranges[0] || [''])[0]; return x < y ? -1 : x > y ? 1 : catRank(a.cat) - catRank(b.cat); });
+  var we = function (d) { var w = dowOf(m + '-' + pad(d)); return w === 0 || w === 6; }, td = function (d) { return m + '-' + pad(d) === App.today; };
+  var g = '<div class="tl-g" style="--d:' + n + '"><div class="tl-n" style="font-size:11px;color:var(--muted)">PROMO</div>';
+  for (var d = 1; d <= n; d++) g += '<div class="tl-dh' + (we(d) ? ' we' : '') + '" style="grid-column:' + (d + 1) + '">' + d + '</div>';
+  bars.forEach(function (p, i) {
+    var row = i + 2, c = colorOf(p.cat);
+    g += '<div class="tl-n" style="grid-row:' + row + '"><button data-p="' + esc(p.id) + '">' + esc(shortT(p.title)) + '</button></div>';
+    for (var k = 1; k <= n; k++) g += '<div class="tl-c' + (we(k) ? ' we' : '') + (td(k) ? ' td' : '') + '" style="grid-row:' + row + ';grid-column:' + (k + 1) + '"></div>';
+    (p.ranges || []).forEach(function (r) {
+      if (r[1] < m + '-01' || r[0] > m + '-' + pad(n)) return;
+      var s0 = r[0] < m + '-01' ? 1 : +r[0].slice(8), e0 = r[1] > m + '-' + pad(n) ? n : +r[1].slice(8);
+      g += '<button class="tl-bar' + (p.exact ? '' : ' dash') + '" data-p="' + esc(p.id) + '" title="' + esc(p.title) + '" style="--c:' + c + ';grid-row:' + row + ';grid-column:' + (s0 + 1) + ' / ' + (e0 + 2) + '">' + (s0 === e0 ? s0 : s0 + '–' + e0) + '</button>';
+    });
+  });
+  g += '</div>';
+  var cats = []; whole.forEach(function (p) { if (cats.indexOf(p.cat) < 0) cats.push(p.cat); });
+  cats.sort(function (a, b) { return catRank(a) - catRank(b); });
+  return '<section class="slide"><div class="sl-h"><h2>Timeline Promo ' + MONL[mi] + ' ' + m.slice(0, 4) + '</h2><span>Promo event per tanggal</span></div><div class="sl-b">'
+    + (bars.length ? '<p class="small" style="margin:0 0 8px;font-weight:700;color:var(--brand)">PROMO PER TANGGAL <span class="muted" style="font-weight:400">(beberapa promo berjalan bersamaan, 1 transaksi hanya 1 promo)</span></p><div class="tl">' + g + '</div>' : '')
+    + (cats.length ? '<p class="small" style="margin:16px 0 0;font-weight:700;color:var(--brand)">BERJALAN SEPANJANG BULAN (1 – ' + n + ' ' + MONL[mi].toUpperCase() + ')</p><div class="bsb">' + cats.map(function (c) {
+        return '<div><b style="color:' + colorOf(c) + '">' + esc(catLabel(c)) + '</b><span>' + whole.filter(function (p) { return p.cat === c; }).map(function (p) { return '<button data-p="' + esc(p.id) + '">' + esc(shortT(p.title)) + '</button>'; }).join('<span class="dot">•</span>') + '</span></div>';
+      }).join('') + '</div>' : '')
+    + '</div></section>';
+}
+
 /* ------------------------------------------------------- kalender --- */
-var BAR_PAL = ['#0B84D8', '#E8540C', '#6A1B9A', '#2E6B4F', '#00796B', '#C0392B', '#1E40AF', '#B7791F', '#D81B60', '#455A64'];
+var BAR_PAL = ['#0B84D8', '#E8500A', '#6A1B9A', '#2E6B4F', '#00796B', '#AD1457', '#1E40AF', '#B7791F', '#1A237E', '#455A64'];
 /* promo yang berlaku sebulan penuh (atau tanggalnya mengikuti ketentuan khusus) masuk panel samping */
 function isWhole(p, m) {
   if (!p.exact) return true;
@@ -610,7 +678,7 @@ function kalender(list, sel) {
   var hasHut = whole.some(function (p) { return !p.exact; });
   var side = '<aside class="kside"><h3>Berlaku sepanjang ' + MONL[mi] + '</h3>'
     + (cats.length ? cats.map(function (c) {
-        return '<div class="kg"><div class="kgh" style="--c:' + colorOf(c) + '">' + esc(c) + '</div><ul>' + whole.filter(function (p) { return p.cat === c; }).map(function (p) {
+        return '<div class="kg"><div class="kgh" style="--c:' + colorOf(c) + '">' + esc(catLabel(c)) + '</div><ul>' + whole.filter(function (p) { return p.cat === c; }).map(function (p) {
           return '<li><button data-p="' + esc(p.id) + '"' + (p.exact ? '' : ' class="hutl"') + '>' + (p.exact ? '' : '<i class="hut"></i>') + esc(shortT(p.title)) + '</button></li>';
         }).join('') + '</ul></div>';
       }).join('') : '<p class="small muted" style="margin:0">Tidak ada promo yang berlaku sebulan penuh.</p>')
@@ -625,23 +693,34 @@ function kalender(list, sel) {
 /* --------------------------------------------------------- detail --- */
 function openPromo(id) {
   var p = (App.data.promos || []).filter(function (x) { return x.id === id; })[0]; if (!p) return;
-  var c = colorOf(p.cat), row = function (k, v) { return v ? '<tr><th>' + k + '</th><td>' + esc(v) + '</td></tr>' : ''; };
-  var html = '<div class="ov" id="ov"><div class="drawer" role="dialog" aria-modal="true" style="--c:' + c + '"><div class="dtop"><div class="grab"></div><button class="btn sm" data-close>Tutup</button></div>'
-    + '<span class="dcat">' + esc(p.cat) + '</span><h2>' + esc(p.title) + '</h2>' + badgeOf(state(p))
-    + '<h3>Syarat &amp; ketentuan</h3><table class="sk"><tbody>' + row('Periode', p.periode || rangeTxt(p.ranges)) + row('Tanggal', rangeTxt(p.ranges))
-      + row('Min. transaksi', p.minTrx) + row('Maks. transaksi', p.maxTrx) + row('Berlaku di', p.berlaku) + row('Produk', p.produk) + '</tbody></table>'
-    + (p.ket && p.ket.length ? '<h3>Ketentuan</h3><ul class="lst">' + p.ket.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>' : '')
-    + (p.tips ? '<div class="tips"><b>Tips kasir:</b> ' + esc(p.tips) + '</div>' : '')
-    + (p.contoh && p.contoh.length ? '<h3>Contoh penerapan</h3>' + p.contoh.map(function (e) {
-        return '<div class="ex ' + (e.ok ? '' : 'no') + '"><div class="ex-h"><span class="n">' + (e.n || '') + '</span><b>' + esc(e.judul) + '</b><span>' + (e.ok ? '✅' : '❌') + '</span></div>'
-          + (e.item ? '<p>' + esc(e.item) + '</p>' : '') + (e.hasil || e.bayar ? '<div class="ex-r"><span>' + esc(e.hasil) + '</span>' + (e.bayar ? '<b>' + esc(e.bayar) + '</b>' : '') + '</div>' : '')
-          + (e.pesan ? '<p class="small muted" style="font-style:italic">' + esc(e.pesan) + '</p>' : '') + '</div>';
-      }).join('') : '')
-    + (p.excel && p.excel.length ? '<h3>List artikel promo</h3><div class="xl">' + p.excel.map(function (x) {
+  closeDrawer();
+  var c = colorOf(p.cat), row = function (k, v) { return v ? '<div><dt>' + k + '</dt><i>:</i><dd>' + esc(v) + '</dd></div>' : ''; };
+  var noFoot = function (t) { return String(t || '').replace(/\s*EIGER ADVENTURE\s*\|.*$/i, '').trim(); };
+  var tips = noFoot(String(p.tips || '').replace(/^[^A-Za-z]*TIPS\s*KASIR\s*:?\s*/i, ''));
+  var ket = (p.ket || []).filter(function (t) { return !/^EIGER ADVENTURE\s*\|/i.test(t) && !/^[^A-Za-z]*TIPS KASIR/i.test(t); });
+  if (!tips) (p.ket || []).forEach(function (t) { var mm = t.match(/^[^A-Za-z]*TIPS KASIR\s*:?\s*(.*)$/i); if (mm) tips = mm[1]; });
+  var mark = function (ok) { return ok ? '<span class="ok" aria-label="berhasil">' + svg('check') + '</span>' : '<span class="no" aria-label="tidak berlaku">' + svg('x') + '</span>'; };
+  var html = '<div class="ov" id="ov"><div class="drawer sld" role="dialog" aria-modal="true" aria-label="' + esc(p.title) + '" style="--c:' + c + '">'
+    + '<div class="sld-top"><div class="sld-hd"><h2>' + esc(p.title) + '</h2><span class="cap">SYARAT KETENTUAN &amp; CONTOH PENERAPAN</span><button class="x" data-close aria-label="Tutup">' + svg('x') + '</button></div><div class="sld-acc"></div></div>'
+    + '<div class="sld-meta"><span class="dcat">' + esc(catLabel(p.cat)) + '</span>' + badgeOf(state(p)) + '</div>'
+    + '<div class="sld-cols"><div>'
+      + '<h3 class="sl-sec">Syarat &amp; Ketentuan</h3><dl class="skr" style="margin:0">' + row('Periode', p.periode || rangeTxt(p.ranges)) + row('Min. Transaksi', p.minTrx) + row('Maks. Transaksi', p.maxTrx)
+      + row('Berlaku di', p.berlaku) + row('Produk', p.produk) + '</dl>'
+      + (ket.length ? '<div class="klbl">KETENTUAN:</div><ul class="kli">' + ket.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>' : '')
+      + (tips ? '<div class="ktip">💡 <b>TIPS KASIR:</b> ' + esc(tips) + '</div>' : '')
+    + '</div><div>'
+      + (p.contoh && p.contoh.length ? '<h3 class="sl-sec">Contoh Penerapan</h3>' + p.contoh.map(function (e, i) {
+          return '<div class="cx ' + (e.ok ? '' : 'no') + '"><div class="cx-h"><span class="n">' + (e.n || i + 1) + '</span><b>Contoh ' + (e.n || i + 1) + (e.judul ? ' — ' + esc(e.judul) : '') + '</b>' + mark(e.ok) + '</div>'
+            + (e.item ? '<div class="cx-it">' + esc(e.item) + '</div>' : '')
+            + (e.hasil || e.bayar ? '<div class="cx-r"><span>' + (e.ok ? '✅ ' : '') + esc(e.hasil) + '</span>' + (e.bayar ? '<b>' + esc(e.bayar) + '</b>' : '') + '</div>' : '')
+            + (e.pesan ? '<div class="cx-p"><em>Pesan:</em> ' + esc(e.pesan) + '</div>' : '') + '</div>';
+        }).join('') : '<h3 class="sl-sec">Contoh Penerapan</h3><div class="empty">Contoh penerapan belum diisi untuk promo ini.</div>')
+    + '</div></div>'
+    + ((p.excel && p.excel.length) || linkedLists(p) ? '<div class="sld-ex">' + (p.excel && p.excel.length ? '<h3 class="sl-sec">List artikel promo</h3><div class="xl">' + p.excel.map(function (x) {
         return '<a href="' + esc(x.u) + '" target="_blank" rel="noopener"><span class="x">' + svg('sheet') + '</span><span><b>' + esc(x.t || 'List artikel') + '</b><small>buka file Excel</small></span><span class="go">' + svg('ext') + '</span></a>';
-      }).join('') + '</div>' : '')
-    + linkedLists(p)
-    + '<p class="small muted" style="margin-top:18px">Selalu cocokkan dengan juknis resmi bila ada perbedaan.</p></div></div>';
+      }).join('') + '</div>' : '') + linkedLists(p) + '</div>' : '')
+    + '<footer class="pfoot"><span>EIGER ADVENTURE &nbsp;|&nbsp; JUKNIS PROMO ' + esc(fmtMonth(p.month).toUpperCase()) + ' &nbsp;|&nbsp; ' + esc(catLabel(p.cat).toUpperCase()) + '</span><img src="img/logo-white.png" alt="Eigerindo MPI"></footer>'
+    + '</div></div>';
   var d = document.createElement('div'); d.innerHTML = html; document.body.appendChild(d.firstChild);
   document.body.style.overflow = 'hidden';
 }
@@ -708,7 +787,7 @@ function promoTitle(id) { var p = (App.data.promos || []).filter(function (x) { 
 function linkedLists(p) {
   var L = artMeta(), out = '';
   L.forEach(function (l, i) { if (l.promoId === p.id) out += listBtn(l, i); });
-  return out ? '<h3>List artikel promo</h3><div class="xl">' + out + '</div><button class="btn block" data-go="cek" style="margin-top:10px">Cek stok toko saya</button>' : '';
+  return out ? '<h3 class="sl-sec">List artikel promo</h3><div class="xl">' + out + '</div><button class="btn block" data-go="cek" style="margin-top:10px">Cek stok toko saya</button>' : '';
 }
 function fmtInfo(col, v) {
   if (typeof v === 'number' && v > 0 && v <= 1 && /disc|diskon|potong|%/i.test(col)) return Math.round(v * 1000) / 10 + '%';
