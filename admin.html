@@ -74,7 +74,7 @@ textarea.inp{min-height:80px;resize:vertical}
     <div class="err" id="aErr"></div>
     <button type="button" class="btn sm" id="aTest" style="margin-top:4px">Tes koneksi server</button>
     <div class="small muted" id="aTestOut" style="margin-top:8px;line-height:1.5"></div>
-    <div class="small muted" style="margin-top:10px">Versi halaman: 13</div>
+    <div class="small muted" style="margin-top:10px">Versi halaman: 14</div>
   </form>
 </div>
 
@@ -497,7 +497,7 @@ function viewAktif() {
   var recent = A.online.filter(function (o) { return o.ago >= 180; });
   var row = function (o) {
     return '<tr><td>' + (o.ago < 180 ? '<span class="dot"></span>' : '') + '<b>' + esc(o.code) + '</b></td><td>' + esc(o.name || '') + '</td>'
-      + '<td class="small muted">' + (o.kind === 'admin' ? 'admin' : 'toko') + (o.page ? ' · ' + esc(o.page) : '') + '</td>'
+      + '<td class="small muted">' + (o.kind === 'admin' ? 'admin' : o.kind === 'ho' ? 'HO' : 'toko') + (o.page ? ' · ' + esc(o.page) : '') + '</td>'
       + '<td class="small muted">' + (o.ago < 180 ? 'online' : o.ago < 3600 ? Math.round(o.ago / 60) + ' menit lalu' : Math.floor(o.ago / 3600) + ' jam lalu') + '</td></tr>';
   };
   return '<div class="card"><h2>' + live.length + ' toko sedang membuka halaman promo</h2>'
