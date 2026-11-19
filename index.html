@@ -224,14 +224,15 @@ table.gt{border-collapse:separate;border-spacing:0;font-size:11px;width:100%;min
   <div class="gcover"><b>Petunjuk Teknis</b><span>Program Promo</span><i></i><small>Untuk seluruh toko Eigerindo</small></div>
   <form class="box" onsubmit="return false">
     <h1>Masuk toko</h1>
-    <p class="lead">Ketik No Site toko kamu untuk membuka promo yang berlaku.</p>
+    <p class="lead" id="gateLead">Ketik No Site toko kamu untuk membuka promo yang berlaku.</p>
     <label for="siteIn" id="siteLbl">No Site</label>
-    <input id="siteIn" class="inp" inputmode="numeric" autocomplete="username" placeholder="2278" maxlength="24">
-    <div id="pwWrap" hidden style="margin-top:10px"><label for="pwIn">Password admin</label><input id="pwIn" class="inp" type="password" autocomplete="current-password"></div>
+    <input id="siteIn" class="inp" inputmode="numeric" autocomplete="username" placeholder="2278" maxlength="80">
+    <div id="pwWrap" hidden style="margin-top:10px"><label for="pwIn" id="pwLbl">Password admin</label><input id="pwIn" class="inp" type="password" autocomplete="current-password"></div>
     <button class="btn primary block" id="gateGo" style="margin-top:12px">Masuk</button>
     <div class="err" id="gateErr"></div>
-    <p class="small muted" style="margin:6px 0 0">No Site belum terdaftar? Hubungi admin area.</p>
-    <p class="small" style="margin:10px 0 0;text-align:center"><button type="button" class="lnk" id="admMode">Masuk sebagai admin</button></p>
+    <p class="small muted" id="gNote" style="margin:6px 0 0">No Site belum terdaftar? Hubungi admin area.</p>
+    <p class="small gmodes" id="gModes"><button type="button" class="lnk" data-mode="ho">Orang HO? Masuk dengan email kantor</button><button type="button" class="lnk" data-mode="admin">Masuk sebagai admin</button></p>
+    <p class="small gmodes" id="gBack" hidden><button type="button" class="lnk" data-mode="toko">Kembali masuk dengan No Site</button><button type="button" class="lnk" id="hoResend" hidden>Kirim ulang kode</button></p>
   </form>
 </div>
 
@@ -338,18 +339,53 @@ function post(body) {
 }
 
 /* ---------------------------------------------------------- login --- */
-function setAdminMode(on) {
-  var i = $('#siteIn'); App._admMode = on;
-  i.setAttribute('inputmode', on ? 'text' : 'numeric'); i.placeholder = on ? 'ID admin, mis. 220450-Nama' : '2278';
-  $('#siteLbl').textContent = on ? 'ID admin' : 'No Site'; $('#pwWrap').hidden = !on;
-  $('#admMode').textContent = on ? 'Kembali masuk dengan No Site' : 'Masuk sebagai admin';
-  $('#gateErr').textContent = ''; i.focus();
+/* mode gerbang: toko (No Site) · admin (ID + password) · ho (email kantor + kode dari email) */
+function setMode(m) {
+  var i = $('#siteIn'), pw = $('#pwIn'); App._mode = m; App._admMode = m === 'admin'; App._hoSent = '';
+  var T = { toko: ['No Site', '2278', 'numeric', 'Ketik No Site toko kamu untuk membuka promo yang berlaku.', 'Masuk'],
+            admin: ['ID admin', 'ID admin, mis. 220450-Nama', 'text', 'Masuk sebagai admin promo.', 'Masuk'],
+            ho: ['Email kantor', 'nama@eigerindo.co.id', 'email', 'Untuk tim HO. Kode masuk akan dikirim ke email kantor kamu.', 'Kirim kode'] }[m];
+  i.classList.toggle('txt', m !== 'toko'); pw.classList.remove('otp');
+  $('#siteLbl').textContent = T[0]; i.placeholder = T[1]; i.setAttribute('inputmode', T[2]); i.type = m === 'ho' ? 'email' : 'text';
+  $('#gateLead').textContent = T[3]; $('#gateGo').textContent = T[4];
+  $('#pwWrap').hidden = m !== 'admin'; $('#pwLbl').textContent = 'Password admin'; pw.type = 'password'; pw.removeAttribute('inputmode'); pw.removeAttribute('maxlength'); pw.value = '';
+  $('#gModes').hidden = m !== 'toko'; $('#gNote').hidden = m !== 'toko'; $('#gBack').hidden = m === 'toko'; $('#hoResend').hidden = true;
+  $('.gate .box h1').textContent = m === 'ho' ? 'Masuk HO' : m === 'admin' ? 'Masuk admin' : 'Masuk toko';
+  $('#gateErr').textContent = ''; i.value = ''; i.focus();
+}
+function setAdminMode(on) { setMode(on ? 'admin' : 'toko'); }
+function hoSend() {
+  var email = ($('#siteIn').value || '').trim(), b = $('#gateGo');
+  if (!email) { $('#gateErr').textContent = 'Isi email kantor dulu.'; return; }
+  b.disabled = true; b.textContent = 'Mengirim kode…'; $('#gateErr').textContent = '';
+  post({ a: 'hoCode', email: email }).then(function (r) {
+    App._hoSent = r.email; b.disabled = false; b.textContent = 'Masuk';
+    $('#pwWrap').hidden = false; $('#pwLbl').textContent = 'Kode 6 digit dari email';
+    var pw = $('#pwIn'); pw.type = 'text'; pw.setAttribute('inputmode', 'numeric'); pw.setAttribute('maxlength', '6'); pw.setAttribute('autocomplete', 'one-time-code'); pw.classList.add('otp'); pw.value = ''; pw.focus();
+    $('#hoResend').hidden = false;
+    $('#gateLead').innerHTML = 'Kode dikirim ke <b>' + esc(r.email) + '</b>, berlaku ' + r.minutes + ' menit. Tidak masuk? Cek folder Spam/Junk.';
+  }).catch(function (e) { b.disabled = false; b.textContent = 'Kirim kode'; $('#gateErr').textContent = e.message || 'Gagal mengirim kode.'; });
+}
+function hoVerify() {
+  var code = ($('#pwIn').value || '').replace(/\D/g, ''), b = $('#gateGo');
+  if (code.length !== 6) { $('#gateErr').textContent = 'Kode terdiri dari 6 angka.'; return; }
+  b.disabled = true; b.textContent = 'Memeriksa…';
+  post({ a: 'hoLogin', email: App._hoSent, code: code, ua: navigator.userAgent.slice(0, 100) }).then(function (r) {
+    b.disabled = false; b.textContent = 'Masuk';
+    App.token = r.token; App.site = r.site; App.admin = false; App.ho = true; LS.set('promo_tok', r.token);
+    setMode('toko'); hideGate(); boot();
+  }).catch(function (e) {
+    b.disabled = false; b.textContent = 'Masuk'; $('#gateErr').textContent = e.message || 'Gagal masuk.';
+    if (e.code === 'expired' || e.code === 'limit') { $('#pwWrap').hidden = true; App._hoSent = ''; $('#gateGo').textContent = 'Kirim kode'; }
+  });
 }
 function showGate(msg) { document.body.classList.add('locked'); $('#gate').hidden = false; $('#gateErr').textContent = msg || ''; setTimeout(function () { $('#siteIn').focus(); }, 60); }
 function hideGate() { document.body.classList.remove('locked'); $('#gate').hidden = true; }
 function doLogin() {
+  if (App._mode === 'ho') { if (App._hoSent && $('#siteIn').value.trim().toLowerCase() === App._hoSent) hoVerify(); else hoSend(); return; }
   var code = ($('#siteIn').value || '').trim(), b = $('#gateGo'), pw = $('#pwIn').value;
   if (!code) { $('#gateErr').textContent = App._admMode ? 'Isi ID admin dulu.' : 'Isi No Site toko dulu.'; return; }
+  if (/@/.test(code) && App._mode !== 'ho') { setMode('ho'); $('#siteIn').value = code; hoSend(); return; }
   if (/[A-Za-z]/.test(code) && !App._admMode) { setAdminMode(true); $('#siteIn').value = code; $('#pwIn').focus(); return; }
   b.disabled = true; b.textContent = 'Memeriksa…';
   post({ a: 'login', site: code, pw: pw, ua: navigator.userAgent.slice(0, 100) }).then(function (r) {
@@ -367,7 +403,7 @@ function doLogout() {
   if (!confirm('Keluar dari halaman promo?')) return;
   post({ a: 'logout' }).catch(function () {});
   if (App.admin) LS.set('promo_admin', '');
-  App.token = ''; App.admin = false; LS.set('promo_tok', ''); stopPing();
+  App.token = ''; App.admin = false; App.ho = false; LS.set('promo_tok', ''); stopPing();
   $('#siteIn').value = ''; showGate('Kamu sudah keluar.');
 }
 
@@ -375,7 +411,7 @@ function doLogout() {
 function boot() {
   $('#view').innerHTML = '<div class="loading"><span class="spin"></span>Memuat promo…</div>';
   api('boot').then(function (r) {
-    App.site = r.site; App.admin = !!r.admin; App.data = normData(r.data); App.online = r.online || []; App.today = r.serverDate || todayISO();
+    App.site = r.site; App.admin = !!r.admin; App.ho = !!r.ho; App.data = normData(r.data); App.online = r.online || []; App.today = r.serverDate || todayISO();
     if (!App.month || r.data.months.indexOf(App.month) < 0) App.month = pickMonth(r.data.months);
     readHash(); render(); startPing();
   }).catch(function (e) {
@@ -458,11 +494,13 @@ function renderChrome() {
     var bd = n[0] === 'memo' && memoN ? '<span class="bd">' + memoN + '</span>' : n[0] === 'akun' && live ? '<span class="bd">' + live + '</span>' : '';
     return '<button data-go="' + n[0] + '" class="' + (App.view === n[0] ? 'on' : '') + '">' + svg(n[2]) + n[1] + bd + '</button>';
   }).join('');
-  $('#sfoot').innerHTML = App.admin
+  $('#sfoot').innerHTML = App.ho
+    ? 'Masuk sebagai<b><span class="admtag ho">HO</span>' + esc(App.site.name) + '</b><button class="btn sm block" id="sOut">Keluar</button>'
+    : App.admin
     ? 'Masuk sebagai<b><span class="admtag">ADMIN</span>' + esc(App.site.name) + '</b><a class="btn sm block" href="admin.html" style="display:block;text-align:center;text-decoration:none;margin-top:10px">Buka halaman admin</a><button class="btn sm block" id="sOut">Keluar</button>'
     : 'Masuk sebagai<b>' + esc(App.site.code) + (App.site.name ? ' · ' + esc(App.site.name) : '') + '</b><button class="btn sm block" id="sOut">Keluar</button>';
   var TT = { home: 'Beranda', jalan: 'Promo hari ini', kalender: 'Kalender promo', semua: 'Semua promo', memo: 'Memo & update', artikel: 'List artikel', cek: 'Cek stok promo', akun: 'Toko online' };
-  $('#tbTitle').innerHTML = esc(TT[App.view] || 'Beranda') + '<small>' + (App.admin ? 'ADMIN · ' + esc(App.site.name || '') : esc(App.site.code + ' · ' + (App.site.name || ''))) + (App.month ? ' · Juknis ' + fmtMonth(App.month) : '') + '</small>';
+  $('#tbTitle').innerHTML = esc(TT[App.view] || 'Beranda') + '<small>' + (App.ho ? 'HO · ' + esc(App.site.name || '') : App.admin ? 'ADMIN · ' + esc(App.site.name || '') : esc(App.site.code + ' · ' + (App.site.name || ''))) + (App.month ? ' · Juknis ' + fmtMonth(App.month) : '') + '</small>';
   $('#tbOnline').innerHTML = svg('users') + (live ? '<span class="bd">' + live + '</span>' : '');
   $('#tbOut').innerHTML = svg('out');
 }
@@ -511,7 +549,7 @@ function vHome() {
     + '<div class="stat"><button data-go="jalan" data-tab="on"><b>' + S.on.length + '</b><small>berjalan hari ini</small></button>'
     + '<button data-go="jalan" data-tab="soon"><b>' + S.soon.length + '</b><small>akan berjalan</small></button>'
     + '<button data-go="semua"><b>' + list.length + '</b><small>total program</small></button></div>'
-    + '<div class="who"><span>' + (App.admin ? '<span class="admtag">ADMIN</span><b>' + esc(App.site.name) + '</b>' : 'Toko <b>' + esc(App.site.code) + (App.site.name ? ' · ' + esc(App.site.name) : '') + '</b>') + '</span>' + adminOnlineTxt() + '<span>' + fmtDate(App.today) + '</span><span class="chip live" style="background:rgba(255,255,255,.12);color:#fff">' + live + ' toko online</span></div></section>'
+    + '<div class="who"><span>' + (App.ho ? '<span class="admtag ho">HO</span><b>' + esc(App.site.name) + '</b>' : App.admin ? '<span class="admtag">ADMIN</span><b>' + esc(App.site.name) + '</b>' : 'Toko <b>' + esc(App.site.code) + (App.site.name ? ' · ' + esc(App.site.name) : '') + '</b>') + '</span>' + adminOnlineTxt() + '<span>' + fmtDate(App.today) + '</span><span class="chip live" style="background:rgba(255,255,255,.12);color:#fff">' + live + ' toko online</span></div></section>'
     + '<div class="qgrid">' + tiles.map(function (t, i) {
         return '<button class="ic" data-tile="' + i + '" style="--c:' + t[3] + ';--t:' + t[4] + '"><span class="i">' + svg(t[2]) + '</span><span>' + t[1] + '</span>' + (t[5] ? '<span class="bd">' + t[5] + '</span>' : '') + '</button>';
       }).join('') + '</div>';
@@ -611,9 +649,9 @@ function vAkun() {
     return '<div class="r"><span class="av" style="background:var(--orange);color:#fff">ADM</span><span><b>' + esc(o.name || 'Admin') + ' <span class="admtag">ADMIN</span></b><small>Admin promo</small></span>'
       + '<span class="t">' + (o.ago < 180 ? '<span class="chip live">online</span>' : Math.round(o.ago / 60) + ' mnt lalu') + '</span></div>';
   }).join('');
-  return '<section class="sheet">' + head(App.admin ? 'Akun admin' : 'Akun toko', '')
-    + '<div class="sum"><span class="lbl">Masuk sebagai</span><div class="big"><b style="font-size:24px">' + (App.admin ? esc(App.site.name) + ' <span class="admtag">ADMIN</span>' : esc(App.site.code)) + '</b></div>'
-    + '<div class="small muted">' + (App.admin ? 'Admin promo · ID ' + esc(App.site.id || (App.site.code + '-' + App.site.name)) : esc(App.site.name || '')) + '</div>'
+  return '<section class="sheet">' + head(App.ho ? 'Akun HO' : App.admin ? 'Akun admin' : 'Akun toko', '')
+    + '<div class="sum"><span class="lbl">Masuk sebagai</span><div class="big"><b style="font-size:24px">' + (App.ho ? esc(App.site.name) + ' <span class="admtag ho">HO</span>' : App.admin ? esc(App.site.name) + ' <span class="admtag">ADMIN</span>' : esc(App.site.code)) + '</b></div>'
+    + '<div class="small muted">' + (App.ho ? 'Tim HO · akses lihat saja' : App.admin ? 'Admin promo · ID ' + esc(App.site.id || (App.site.code + '-' + App.site.name)) : esc(App.site.name || '')) + '</div>'
     + '<div class="row"><button class="btn sm" id="aRefresh">' + 'Muat ulang data' + '</button><button class="btn sm danger" id="aOut">Keluar</button></div></div></section>'
     + (admRows ? '<section class="panel"><div class="ph"><h2>Admin</h2></div><div class="olist">' + admRows + '</div></section>' : '')
     + '<section class="panel"><div class="ph"><h2>Toko online sekarang</h2><span class="sub">' + live.length + ' toko</span></div>'
@@ -1147,7 +1185,10 @@ function adminOnlineTxt() {
   if (!a.length || App.admin) return '';
   return '<span class="chip" style="background:rgba(232,80,10,.9);color:#fff">Admin online: ' + a.map(function (o) { return esc(o.name); }).join(', ') + '</span>';
 }
-document.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('#admMode')) { e.preventDefault(); setAdminMode(!App._admMode); } });
+document.addEventListener('click', function (e) {
+  var m = e.target.closest && e.target.closest('[data-mode]'); if (m) { e.preventDefault(); setMode(m.dataset.mode); return; }
+  if (e.target.closest && e.target.closest('#hoResend')) { e.preventDefault(); App._hoSent = ''; hoSend(); }
+});
 document.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target && e.target.id === 'pwIn') { e.preventDefault(); doLogin(); } });
 
 (function init() {
