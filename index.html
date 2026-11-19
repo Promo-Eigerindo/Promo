@@ -406,7 +406,8 @@ function promoCard(p) {
     + '<span class="cat">' + esc(catLabel(p.cat)) + '</span><b>' + esc(p.title) + '</b>' + badgeOf(state(p))
     + '<span class="meta"><span>' + svg('cal') + esc(rangeTxt(p.ranges)) + (p.exact ? '' : ' · lihat ketentuan') + '</span>'
     + (p.minTrx && !/tidak ada/i.test(p.minTrx) ? '<span>' + svg('tag') + 'Min. ' + esc(p.minTrx) + '</span>' : '')
-    + (p.excel && p.excel.length ? '<span>' + svg('sheet') + p.excel.length + ' file list artikel</span>' : '') + '</span></button>';
+    + (p.excel && p.excel.length ? '<span>' + svg('sheet') + p.excel.length + ' file list artikel</span>' : '')
+    + (p.extra || []).map(function (e) { return '<span class="xtra">' + svg(e.type === 'tier' ? 'list' : e.type === 'eksekusi' ? 'clock' : 'file') + (({ tier: 'Ada detail tiering', eksekusi: 'Ada teknis eksekusi' })[e.type] || 'Ada info tambahan') + '</span>'; }).join('') + '</span></button>';
 }
 function monthPromos() { return (App.data.promos || []).filter(function (p) { return p.month === App.month; }).sort(byPrio); }
 function monthMemos() { return (App.data.memos || []).filter(function (m) { return m.month === App.month; }); }
@@ -499,6 +500,9 @@ function vHome() {
       }).join('') + '</div>';
   if (B.catatan) h += '<section class="panel" style="border-left:6px solid var(--orange)"><div class="ph"><h2>Catatan admin</h2></div><p style="margin:0;font-size:13.5px">' + esc(B.catatan) + '</p></section>';
   h += ringkasan(list, per);
+  var INF = (B.info || []);
+  if (INF.length) h += '<section class="panel"><div class="ph"><h2>Info tambahan</h2><span class="sub" style="margin-left:auto">' + INF.length + ' info</span></div><div class="xl">'
+    + INF.map(function (e, k) { return '<button class="xb" data-info="' + k + '"><span class="x" style="background:var(--orange-tint);color:var(--orange-2)">' + svg('file') + '</span><span><b>' + esc(e.title || 'Info tambahan') + '</b><small>' + esc(e.sub || e.lead || '') + '</small></span><span class="go">' + svg('next') + '</span></button>'; }).join('') + '</div></section>';
   h += '<section class="panel"><div class="ph"><h2>Sedang berjalan</h2><button class="more" data-go="jalan" data-tab="on">Selengkapnya</button></div>'
     + (S.on.length ? '<div class="hscroll">' + S.on.map(promoCard).join('') + '</div>' : '<div class="empty">Tidak ada promo yang berjalan hari ini.</div>') + '</section>';
   h += '<section class="panel"><div class="ph"><h2>Akan berjalan</h2><button class="more" data-go="jalan" data-tab="soon">Selengkapnya</button></div>'
@@ -718,6 +722,7 @@ function openPromo(id) {
             + (e.pesan ? '<div class="cx-p"><em>Pesan:</em> ' + esc(e.pesan) + '</div>' : '') + '</div>';
         }).join('') : '<h3 class="sl-sec">Contoh Penerapan</h3><div class="empty">Contoh penerapan belum diisi untuk promo ini.</div>')
     + '</div></div>'
+    + extrasHtml(p)
     + ((p.excel && p.excel.length) || linkedLists(p) ? '<div class="sld-ex">' + (p.excel && p.excel.length ? '<h3 class="sl-sec">List artikel promo</h3><div class="xl">' + p.excel.map(function (x) {
         return '<a href="' + esc(x.u) + '" target="_blank" rel="noopener"><span class="x">' + svg('sheet') + '</span><span><b>' + esc(x.t || 'List artikel') + '</b><small>buka file Excel</small></span><span class="go">' + svg('ext') + '</span></a>';
       }).join('') + '</div>' : '') + linkedLists(p) + '</div>' : '')
@@ -1046,6 +1051,72 @@ document.addEventListener('toggle', function (e) {
   var d = e.target; if (!d || !d.dataset || d.dataset.mc == null) return;
   (App.cekOpen || (App.cekOpen = {}))[d.dataset.mc] = d.open;
 }, true);
+
+/* ===================================================== lampiran promo: tiering & teknis eksekusi */
+function noteBoxes(notes) {
+  var ICON = { 'CARA HITUNG': '💡', 'SISTEM GWP': '🎁', 'CATATAN STORE': '📌', 'CATATAN': '📌', 'TIPS KASIR': '💡' };
+  return (notes || []).map(function (n) {
+    return '<div class="xnote"><span class="xi">' + (ICON[n.label] || '💡') + '</span><div>' + (n.label ? '<b>' + esc(n.label) + ':</b> ' : '') + esc(n.text) + '</div></div>';
+  }).join('');
+}
+function extrasHtml(p) {
+  return (p.extra || []).map(function (e) {
+    var head = '<div class="xh"><h3>' + esc(e.title || ({ tier: 'Detail tiering', eksekusi: 'Teknis eksekusi' })[e.type] || 'Info tambahan') + '</h3>' + (e.sub ? '<span>' + esc(e.sub) + '</span>' : '') + '</div>'
+      + (e.lead ? '<p class="xlead">' + esc(e.lead) + '</p>' : '');
+    var body = '';
+    if (e.type === 'tier') {
+      var n = (e.tiers || []).length;
+      body = '<div class="tiers" style="--n:' + n + '">' + (e.tiers || []).map(function (t, i) {
+        var L = t.lines || [], bi = -1; L.forEach(function (l, k) { if (l.big && bi < 0) bi = k; });
+        var head2 = bi > 0 ? L.slice(0, bi) : L.slice(0, 1), rest = bi >= 0 ? L.slice(bi) : L.slice(1);
+        var cap = head2.length > 1 ? head2[head2.length - 1].t : '', top = head2.length > 1 ? head2.slice(0, -1) : head2;
+        return '<div class="tc' + (i === n - 1 ? ' top' : '') + '" style="--i:' + i + '"><div class="tl">' + esc(t.label) + '</div>'
+          + top.map(function (l) { return '<div class="tb">' + esc(l.t) + '</div>'; }).join('')
+          + '<div class="tbox">' + (cap ? '<small>' + esc(cap) + '</small>' : '') + rest.map(function (l, k) { return l.big ? '<b>' + esc(l.t) + '</b>' : '<div' + (k === rest.length - 1 && /total|min\./i.test(l.t) ? ' class="tt"' : '') + '>' + esc(l.t) + '</div>'; }).join('') + '</div></div>';
+      }).join('') + '</div>';
+    } else if (e.type === 'info') {
+      body = infoBody(e);
+    } else {
+      body = '<div class="days">' + (e.days || []).map(function (d) {
+        return '<div class="dc"><div class="dh"><span class="n">' + esc(d.n) + '</span><div><b>' + esc(d.day) + '</b>' + (d.sub ? '<small>' + esc(d.sub) + '</small>' : '') + '</div></div>'
+          + (d.items || []).map(function (it) { return '<div class="di">' + (it.tag ? '<span class="tag' + (/^\d/.test(it.tag) ? '' : ' alt') + '">' + esc(it.tag) + '</span>' : '<span></span>') + '<p>' + esc(it.text) + '</p></div>'; }).join('') + '</div>';
+      }).join('') + '</div>';
+    }
+    return '<section class="xsl">' + head + body + noteBoxes(e.notes) + '</section>';
+  }).join('');
+}
+
+/* isi slide "info tambahan": tabel, kartu per kolom, atau daftar */
+function infoBody(e) {
+  var h = '';
+  if (e.table && e.table.length) {
+    var head = e.table.length > 1 ? e.table[0] : null, rows = head ? e.table.slice(1) : e.table;
+    h += '<div class="xtw"><table class="xt">' + (head ? '<thead><tr>' + head.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + '</tr></thead>' : '')
+      + '<tbody>' + rows.map(function (r) { return '<tr>' + r.map(function (c, k) { return '<td' + (head ? ' data-h="' + esc(head[k] || '') + '"' : '') + '>' + esc(c) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
+  }
+  var cols = (e.cols || []).filter(function (c) { return c.length; });
+  if (cols.length) {
+    /* baris yang menyambung (diawali huruf kecil) digabung jadi satu paragraf */
+    var para = function (c) { var out = []; c.forEach(function (l) { var p = out[out.length - 1]; if (p && !l.big && !p.big && /^[a-z(]/.test(l.t) && !/[.:!?]$/.test(p.t)) p.t += ' ' + l.t; else out.push({ t: l.t, big: l.big }); }); return out; };
+    var head1 = function (c) { return c.length > 1 && (c[0].big || (c[0].t.length <= 40 && /^[^a-z]*$/.test(c[0].t))); };
+    h += '<div class="xcols" style="--n:' + Math.min(cols.length, 4) + '">' + cols.map(function (c, k) {
+      var P = para(c), hd = head1(P) ? P.shift() : null;
+      return '<div class="xcol">' + (cols.length > 1 ? '<span class="n">' + (k + 1) + '</span>' : '') + (hd ? '<b class="xch">' + esc(hd.t) + '</b>' : '')
+        + P.map(function (l) { return l.big ? '<b class="xbig">' + esc(l.t) + '</b>' : '<p>' + esc(l.t) + '</p>'; }).join('') + '</div>';
+    }).join('') + '</div>';
+  }
+  return h;
+}
+function openInfo(k) {
+  var B = App.data.bulan[App.month] || {}, e = (B.info || [])[k]; if (!e) return;
+  closeDrawer();
+  var html = '<div class="ov" id="ov"><div class="drawer sld" role="dialog" aria-modal="true" style="--c:#E8500A">'
+    + '<div class="sld-top"><div class="sld-hd"><h2>' + esc(e.title || 'Info tambahan') + '</h2><span class="cap">' + esc(e.sub || 'INFO TAMBAHAN') + '</span><button class="x" data-close aria-label="Tutup">' + svg('x') + '</button></div><div class="sld-acc"></div></div>'
+    + '<div style="height:14px"></div>' + extrasHtml({ extra: [Object.assign({}, e, { title: '', sub: '' })] }).replace('<div class="xh"><h3>Info tambahan</h3></div>', '')
+    + '<footer class="pfoot"><span>EIGER ADVENTURE &nbsp;|&nbsp; JUKNIS PROMO ' + esc(fmtMonth(App.month).toUpperCase()) + ' &nbsp;|&nbsp; INFO TAMBAHAN</span><img src="img/logo-white.png" alt="Eigerindo MPI"></footer></div></div>';
+  var d = document.createElement('div'); d.innerHTML = html; document.body.appendChild(d.firstChild); document.body.style.overflow = 'hidden';
+}
+document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('[data-info]'); if (b) { e.stopPropagation(); openInfo(+b.dataset.info); } }, true);
 
 (function init() {
   if (!/^https:\/\/script\.google(usercontent)?\.com\//.test(CFG.API || '') || /GANTI_DENGAN/.test(CFG.API)) {
