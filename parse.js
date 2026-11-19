@@ -161,6 +161,8 @@
     if (/event/.test(s)) return 'Event';
     if (/bank|kartu|cc\b/.test(s)) return 'Banking';
     if (/bazaar|bazar|factory/.test(s)) return 'Bazaar';
+    if (/\beac\b|adventure club/.test(s)) return 'EAC';
+    if (/tambah/.test(s)) return 'Tambahan';
     return c.replace(/\s+/g, ' ').trim().replace(/^./, function (x) { return x.toUpperCase(); }).slice(0, 24) || 'Lainnya';
   }
 
@@ -183,9 +185,9 @@
       if (/^KETENTUAN:?$/i.test(l.t)) kY = l.y;
       if (/^TIPS\s*KASIR/i.test(l.t)) tY = l.y;
     });
-    var ket = kY != null ? L.filter(function (l) { return l.y > kY && (tY == null || l.y < tY - 2); }).map(function (l) { return l.t; })
+    var ket = kY != null ? L.filter(function (l) { return l.y > kY && (tY == null || l.y < tY - 2) && !/^EIGER ADVENTURE\s*\|/i.test(l.t); }).map(function (l) { return l.t; })
       : L.filter(function (l) { return !/^(Periode|Min|Maks|Berlaku|Produk)\b/i.test(l.t) && !/^SYARAT/i.test(l.t); }).map(function (l) { return l.t; });
-    var tips = tY != null ? L.filter(function (l) { return l.y >= tY - 2; }).map(function (l) { return l.t; }).join(' ').replace(/^TIPS\s*KASIR:?\s*/i, '') : '';
+    var tips = tY != null ? L.filter(function (l) { return l.y >= tY - 2 && !/^EIGER ADVENTURE\s*\|/i.test(l.t); }).map(function (l) { return l.t; }).join(' ').replace(/^[^A-Za-z]*TIPS\s*KASIR\s*:?\s*/i, '').replace(/\s*EIGER ADVENTURE\s*\|.*$/i, '') : '';
 
     var ex = [], cur = null;
     R.forEach(function (l) {
