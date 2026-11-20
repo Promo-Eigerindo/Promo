@@ -246,7 +246,7 @@ table.gt{border-collapse:separate;border-spacing:0;font-size:11px;width:100%;min
   <img class="logo" src="img/logo-white.png" alt="Eigerindo MPI">
   <span class="ttl" id="tbTitle"></span>
   <span class="sp"></span>
-  <button class="ibtn" id="tbOnline" title="Toko online"></button>
+  <button class="ibtn" id="tbOnline" title="Siapa online"></button>
   <button class="ibtn" id="tbOut" title="Keluar"></button>
 </header>
 
@@ -475,12 +475,13 @@ function split(list) {
   soon.sort(function (a, b) { return catRank(a.cat) - catRank(b.cat) || (state(a).to || 99) - (state(b).to || 99) || byPrio(a, b); });
   return { on: on, soon: soon, past: past, hold: hold };
 }
+function liveHO(all) { return (App.online || []).filter(function (o) { return o.kind === 'ho' && o.ago < (all ? 3600 : 180) && !(App.ho && String(o.code) === String(App.site.code)); }); }
 function liveSites() { return (App.online || []).filter(function (o) { return o.ago < 180 && o.kind === 'site'; }); }
 
 /* --------------------------------------------------------- navigasi - */
 var NAV = [['home', 'Beranda', 'home'], ['kalender', 'Kalender', 'cal'], ['jalan', 'Hari ini', 'zap'], ['memo', 'Memo', 'memo'], ['akun', 'Akun', 'user']];
 var SNAV = [['home', 'Beranda', 'home'], ['jalan', 'Promo hari ini', 'zap'], ['kalender', 'Kalender', 'cal'], ['semua', 'Semua promo', 'list'],
-            ['memo', 'Memo & update', 'memo'], ['artikel', 'List artikel', 'sheet'], ['cek', 'Cek stok promo', 'search'], ['akun', 'Toko online', 'users']];
+            ['memo', 'Memo & update', 'memo'], ['artikel', 'List artikel', 'sheet'], ['cek', 'Cek stok promo', 'search'], ['akun', 'Siapa online', 'users']];
 function go(v, extra) {
   App.view = v; if (extra) Object.assign(App, extra);
   var h = '#' + v; if (location.hash !== h) history.pushState(null, '', h);
@@ -504,9 +505,9 @@ function renderChrome() {
     : App.admin
     ? 'Masuk sebagai<b><span class="admtag">ADMIN</span>' + esc(App.site.name) + '</b><a class="btn sm block" href="admin.html" style="display:block;text-align:center;text-decoration:none;margin-top:10px">Buka halaman admin</a><button class="btn sm block" id="sOut">Keluar</button>'
     : 'Masuk sebagai<b>' + esc(App.site.code) + (App.site.name ? ' · ' + esc(App.site.name) : '') + '</b><button class="btn sm block" id="sOut">Keluar</button>';
-  var TT = { home: 'Beranda', jalan: 'Promo hari ini', kalender: 'Kalender promo', semua: 'Semua promo', memo: 'Memo & update', artikel: 'List artikel', cek: 'Cek stok promo', akun: 'Toko online' };
+  var TT = { home: 'Beranda', jalan: 'Promo hari ini', kalender: 'Kalender promo', semua: 'Semua promo', memo: 'Memo & update', artikel: 'List artikel', cek: 'Cek stok promo', akun: 'Siapa online' };
   $('#tbTitle').innerHTML = esc(TT[App.view] || 'Beranda') + '<small>' + (App.ho ? 'HO · ' + esc(App.site.name || '') : App.admin ? 'ADMIN · ' + esc(App.site.name || '') : esc(App.site.code + ' · ' + (App.site.name || ''))) + (App.month ? ' · Juknis ' + fmtMonth(App.month) : '') + '</small>';
-  $('#tbOnline').innerHTML = svg('users') + (live ? '<span class="bd">' + live + '</span>' : '');
+  live += liveHO().length; $('#tbOnline').innerHTML = svg('users') + (live ? '<span class="bd">' + live + '</span>' : '');
   $('#tbOut').innerHTML = svg('out');
 }
 
@@ -546,7 +547,7 @@ function vHome() {
     ['artikel', 'List artikel', 'sheet', '#107C41', '#E7F4EC', 0],
     ['memo', 'Memo & update', 'memo', '#AD1457', '#FBE7EF', memos.length],
     [B.fileJuknis ? 'pdf' : 'nopdf', 'Juknis PDF', 'file', '#D32F2F', '#FDECEC', 0],
-    ['akun', 'Toko online', 'users', '#6A1B9A', '#F3E8FA', live]
+    ['akun', 'Siapa online', 'users', '#6A1B9A', '#F3E8FA', live + liveHO().length]
   ];
   App._tiles = tiles;
   var h = '<section class="cov"><img class="lg" src="img/logo-white.png" alt="Eigerindo MPI"><h1>Petunjuk Teknis<span>Program Promo</span></h1><div class="ln"></div>'
@@ -554,7 +555,7 @@ function vHome() {
     + '<div class="stat"><button data-go="jalan" data-tab="on"><b>' + S.on.length + '</b><small>berjalan hari ini</small></button>'
     + '<button data-go="jalan" data-tab="soon"><b>' + S.soon.length + '</b><small>akan berjalan</small></button>'
     + '<button data-go="semua"><b>' + list.length + '</b><small>total program</small></button></div>'
-    + '<div class="who"><span>' + (App.ho ? '<span class="admtag ho">HO</span><b>' + esc(App.site.name) + '</b>' : App.admin ? '<span class="admtag">ADMIN</span><b>' + esc(App.site.name) + '</b>' : 'Toko <b>' + esc(App.site.code) + (App.site.name ? ' · ' + esc(App.site.name) : '') + '</b>') + '</span>' + adminOnlineTxt() + '<span>' + fmtDate(App.today) + '</span><span class="chip live" style="background:rgba(255,255,255,.12);color:#fff">' + live + ' toko online</span></div></section>'
+    + '<div class="who"><span>' + (App.ho ? '<span class="admtag ho">HO</span><b>' + esc(App.site.name) + '</b>' : App.admin ? '<span class="admtag">ADMIN</span><b>' + esc(App.site.name) + '</b>' : 'Toko <b>' + esc(App.site.code) + (App.site.name ? ' · ' + esc(App.site.name) : '') + '</b>') + '</span>' + adminOnlineTxt() + '<span>' + fmtDate(App.today) + '</span><span class="chip live" style="background:rgba(255,255,255,.12);color:#fff">' + live + ' toko' + (liveHO().length ? ' · ' + liveHO().length + ' HO' : '') + ' online</span></div></section>'
     + '<div class="qgrid">' + tiles.map(function (t, i) {
         return '<button class="ic" data-tile="' + i + '" style="--c:' + t[3] + ';--t:' + t[4] + '"><span class="i">' + svg(t[2]) + '</span><span>' + t[1] + '</span>' + (t[5] ? '<span class="bd">' + t[5] + '</span>' : '') + '</button>';
       }).join('') + '</div>';
@@ -652,6 +653,12 @@ function vAkun() {
     return '<div class="r"><span class="av">' + esc(String(o.code).slice(0, 4)) + '</span><span><b>' + esc(o.name || o.code) + '</b><small>No Site ' + esc(o.code) + '</small></span>'
       + '<span class="t">' + (o.ago < 180 ? '<span class="chip live">online</span>' : Math.round(o.ago / 60) + ' mnt lalu') + '</span></div>';
   };
+  var hoAll = liveHO(true), hoLive = hoAll.filter(function (o) { return o.ago < 180; });
+  var hoRows = hoAll.map(function (o) {
+    var ini = String(o.name || o.code).split(/[\s.@_-]+/).filter(Boolean).slice(0, 2).map(function (w) { return w[0]; }).join('').toUpperCase();
+    return '<div class="r"><span class="av" style="background:#073763;color:#fff">' + esc(ini || 'HO') + '</span><span><b>' + esc(o.name || 'Tim HO') + ' <span class="admtag ho">HO</span></b><small>' + (App.admin ? esc(o.code) : 'Tim Head Office') + '</small></span>'
+      + '<span class="t">' + (o.ago < 180 ? '<span class="chip live">online</span>' : Math.round(o.ago / 60) + ' mnt lalu') + '</span></div>';
+  }).join('');
   var adm = (App.online || []).filter(function (o) { return o.kind === 'admin' && o.ago < 3600; });
   var admRows = adm.map(function (o) {
     return '<div class="r"><span class="av" style="background:var(--orange);color:#fff">ADM</span><span><b>' + esc(o.name || 'Admin') + ' <span class="admtag">ADMIN</span></b><small>Admin promo</small></span>'
@@ -662,6 +669,7 @@ function vAkun() {
     + '<div class="small muted">' + (App.ho ? 'Tim HO · akses lihat saja' : App.admin ? 'Admin promo · ID ' + esc(App.site.id || (App.site.code + '-' + App.site.name)) : esc(App.site.name || '')) + '</div>'
     + '<div class="row"><button class="btn sm" id="aRefresh">' + 'Muat ulang data' + '</button><button class="btn sm danger" id="aOut">Keluar</button></div></div></section>'
     + (admRows ? '<section class="panel"><div class="ph"><h2>Admin</h2></div><div class="olist">' + admRows + '</div></section>' : '')
+    + '<section class="panel"><div class="ph"><h2>Tim HO</h2><span class="sub">' + hoLive.length + ' online</span></div><div class="olist">' + (hoRows || '<div class="empty">Belum ada akun HO yang online.</div>') + '</div></section>'
     + '<section class="panel"><div class="ph"><h2>Toko online sekarang</h2><span class="sub">' + live.length + ' toko</span></div>'
     + '<div class="olist">' + (live.map(row).join('') || '<div class="empty">Belum ada toko lain yang online.</div>') + '</div></section>'
     + (recent.length ? '<section class="panel"><div class="ph"><h2>Baru saja aktif</h2></div><div class="olist">' + recent.map(row).join('') + '</div></section>' : '');
