@@ -78,7 +78,7 @@ textarea.inp{min-height:80px;resize:vertical}
     <div class="err" id="aErr"></div>
     <button type="button" class="btn sm" id="aTest" style="margin-top:4px">Tes koneksi server</button>
     <div class="small muted" id="aTestOut" style="margin-top:8px;line-height:1.5"></div>
-    <div class="small muted" style="margin-top:10px">Versi halaman: 16</div>
+    <div class="small muted" style="margin-top:10px">Versi halaman: 17</div>
   </form>
 </div>
 
@@ -93,7 +93,7 @@ textarea.inp{min-height:80px;resize:vertical}
   <span class="ttl" id="tbTitle"></span>
   <span class="sp"></span>
   <button class="ibtn" id="reload" title="Muat ulang"></button>
-  <button class="ibtn" id="tbOnline" title="Toko online"></button>
+  <button class="ibtn" id="tbOnline" title="Toko & HO online"></button>
   <button class="ibtn" id="out" title="Keluar"></button>
 </header>
 
@@ -219,16 +219,17 @@ function boot() {
 
 /* ----------------------------------------------------------- render */
 var ANAV = [['home', 'Beranda', 'home'], ['promo', 'Promo', 'list'], ['terbit', 'Unggah', 'upload'], ['toko', 'Toko', 'store'], ['aktif', 'Aktivitas', 'history']];
-var ASNAV = [['home', 'Beranda', 'home'], ['terbit', 'Unggah juknis', 'upload', 'cta'], ['promo', 'Promo tersimpan', 'list'], ['artikel', 'List artikel promo', 'sheet'], ['foto', 'Foto produk', 'image'], ['toko', 'Daftar toko', 'store'], ['aktif', 'Toko online & log', 'users']];
+var ASNAV = [['home', 'Beranda', 'home'], ['terbit', 'Unggah juknis', 'upload', 'cta'], ['promo', 'Promo tersimpan', 'list'], ['artikel', 'List artikel promo', 'sheet'], ['foto', 'Foto produk', 'image'], ['toko', 'Daftar toko', 'store'], ['aktif', 'Toko & HO online', 'users']];
 var TITLES = { terbit: ['Unggah & terbitkan', 'Baca juknis, koreksi, lalu terbitkan ke seluruh toko'], promo: ['Promo tersimpan', 'Versi yang sedang dilihat toko'],
   artikel: ['List artikel promo', 'Excel list artikel per bulan, dipakai toko untuk cek stok promo'],
   foto: ['Foto produk', 'File link foto per artikel & warna, tampil di cek stok toko'],
-  toko: ['Daftar toko', 'Hanya No Site di sini yang bisa masuk'], aktif: ['Toko online & riwayat', 'Siapa yang sedang membuka halaman promo'] };
+  toko: ['Daftar toko', 'Hanya No Site di sini yang bisa masuk'], aktif: ['Toko & HO online', 'Siapa yang sedang membuka halaman promo'] };
 function goA(v) { A.tab = v; var h = '#' + v; if (location.hash !== h) history.pushState(null, '', h); closeOv(); render(); window.scrollTo(0, 0); }
 window.addEventListener('popstate', function () { var v = (location.hash || '').slice(1); if (TITLES[v] || v === 'home') { A.tab = v; closeOv(); if (A.data) render(); } });
+function hoA(all) { return (A.online || []).filter(function (o) { return o.kind === 'ho' && o.ago < (all ? 3600 : 180); }); }
 function liveA() { return (A.online || []).filter(function (o) { return o.ago < 180 && o.kind === 'site'; }); }
 function renderChrome() {
-  var live = liveA().length;
+  var live = liveA().length + hoA().length;
   $('#bnav').innerHTML = ANAV.map(function (n) {
     if (n[0] === 'terbit') return '<button class="fab' + (A.tab === 'terbit' ? ' on' : '') + '" data-go="terbit"><span class="d">' + svg('upload') + '</span><span>' + n[1] + '</span></button>';
     return '<button data-go="' + n[0] + '" class="' + (A.tab === n[0] ? 'on' : '') + '">' + svg(n[2]) + '<span>' + n[1] + '</span></button>';
@@ -256,7 +257,7 @@ function render() {
 }
 var ATILES = [['terbit', 'Unggah juknis', 'upload', '#E46F3F', '#FDF0EA'], ['promo', 'Promo tersimpan', 'list', '#0F3192', '#EEF2FB'],
   ['toko', 'Daftar toko', 'store', '#107C41', '#E7F4EC'], ['tpl', 'Template toko', 'download', '#7A4FB5', '#F1EBFA'],
-  ['aktif', 'Toko online', 'users', '#1B47C2', '#E6EDFC'], ['foto', 'Foto produk', 'image', '#D81B60', '#FCE4EC'],
+  ['aktif', 'Toko & HO online', 'users', '#1B47C2', '#E6EDFC'], ['foto', 'Foto produk', 'image', '#D81B60', '#FCE4EC'],
   ['site', 'Halaman toko', 'ext', '#13806F', '#E3F4F0'], ['artikel', 'List artikel', 'sheet', '#C9531F', '#FDF0EA']];
 function viewHome() {
   var ms = A.data.months, last = ms[ms.length - 1], live = liveA();
@@ -269,7 +270,7 @@ function viewHome() {
   var sum = '<div class="sum"><span class="lbl">Terbit terakhir · ' + (last ? fmtMonth(last) : 'belum ada') + '</span>'
     + '<div class="big"><b>' + lp + '</b><small>promo dilihat toko</small></div>'
     + '<div class="small muted">' + esc(LB.title || '') + (LB.updatedAt ? ' · diperbarui ' + esc(LB.updatedAt) : '') + '</div>'
-    + '<div class="row"><span class="chip">' + A.sites.length + ' toko terdaftar</span><span class="chip live">' + live.length + ' online</span><span class="chip">' + ms.length + ' bulan</span></div></div>';
+    + '<div class="row"><span class="chip">' + A.sites.length + ' toko terdaftar</span><span class="chip live">' + live.length + ' toko online</span>' + (hoA().length ? '<span class="chip live">' + hoA().length + ' HO online</span>' : '') + '<span class="chip">' + ms.length + ' bulan</span></div></div>';
   var h = '<section class="sheet"><p class="hello">HALO, <b>' + esc(((A.me && A.me.name) || 'Admin').toUpperCase()) + '</b><span class="chip">Admin</span></p>'
     + '<div class="sumwrap">' + sum + grid + '</div></section>';
   if (A.W) h += '<section class="panel" style="border-left:5px solid var(--orange)"><div class="ph"><h2>Belum diterbitkan</h2><button class="more" data-go="terbit">Lanjutkan</button></div>'
@@ -279,10 +280,13 @@ function viewHome() {
         var n = A.data.promos.filter(function (p) { return p.month === m; }).length, mm = A.data.memos.filter(function (x) { return x.month === m; }).length, B = A.data.bulan[m] || {};
         return '<div class="r" data-month="' + m + '" style="cursor:pointer"><span class="av">' + MON[+m.slice(5) - 1] + '</span><span><b>' + fmtMonth(m) + '</b><small>' + n + ' promo · ' + mm + ' memo' + (B.updatedAt ? ' · ' + esc(B.updatedAt) : '') + '</small></span><span class="t">' + svg('next') + '</span></div>';
       }).join('') + '</div>' : '<div class="empty">Belum ada juknis yang terbit. Mulai dari tombol Unggah.</div>') + '</section>'
-    + '<section class="panel"><div class="ph"><h2>Toko online</h2><button class="more" data-go="aktif">Selengkapnya</button></div>'
+    + '<section class="panel"><div class="ph"><h2>Toko &amp; HO online</h2><button class="more" data-go="aktif">Selengkapnya</button></div>'
+    + (hoA().length ? '<div class="olist">' + hoA().map(function (o) {
+        return '<div class="r"><span class="av" style="background:#073763;color:#fff">HO</span><span><b>' + esc(o.name || o.code) + ' <span class="admtag ho">HO</span></b><small>' + esc(o.code) + '</small></span><span class="t"><span class="chip live">online</span></span></div>';
+      }).join('') + '</div>' : '')
     + (live.length ? '<div class="olist">' + live.slice(0, 8).map(function (o) {
         return '<div class="r"><span class="av">' + esc(String(o.code).slice(0, 4)) + '</span><span><b>' + esc(o.name || o.code) + '</b><small>No Site ' + esc(o.code) + '</small></span><span class="t"><span class="chip live">online</span></span></div>';
-      }).join('') + '</div>' : '<div class="empty">Belum ada toko yang online.</div>') + '</section></div>';
+      }).join('') + '</div>' : (hoA().length ? '' : '<div class="empty">Belum ada toko yang online.</div>')) + '</section></div>';
   return h;
 }
 
@@ -505,13 +509,14 @@ function viewAktif() {
   var live = A.online.filter(function (o) { return o.ago < 180; });
   var recent = A.online.filter(function (o) { return o.ago >= 180; });
   var row = function (o) {
-    return '<tr><td>' + (o.ago < 180 ? '<span class="dot"></span>' : '') + '<b>' + esc(o.code) + '</b></td><td>' + esc(o.name || '') + '</td>'
+    return '<tr><td>' + (o.ago < 180 ? '<span class="dot"></span>' : '') + '<b>' + esc(o.code) + '</b></td><td>' + esc(o.name || '') + (o.kind === 'ho' ? ' <span class="admtag ho">HO</span>' : o.kind === 'admin' ? ' <span class="admtag">ADMIN</span>' : '') + '</td>'
       + '<td class="small muted">' + (o.kind === 'admin' ? 'admin' : o.kind === 'ho' ? 'HO' : 'toko') + (o.page ? ' · ' + esc(o.page) : '') + '</td>'
       + '<td class="small muted">' + (o.ago < 180 ? 'online' : o.ago < 3600 ? Math.round(o.ago / 60) + ' menit lalu' : Math.floor(o.ago / 3600) + ' jam lalu') + '</td></tr>';
   };
-  return '<div class="card"><h2>' + live.length + ' toko sedang membuka halaman promo</h2>'
-    + '<p class="lead">Dihitung dari toko yang halamannya terbuka dalam 3 menit terakhir.</p>'
-    + '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>No Site</th><th>Nama</th><th>Jenis</th><th>Terakhir aktif</th></tr></thead><tbody>'
+  var nT = live.filter(function (o) { return o.kind === 'site'; }).length, nH = live.filter(function (o) { return o.kind === 'ho'; }).length;
+  return '<div class="card"><h2>' + nT + ' toko · ' + nH + ' HO sedang membuka halaman promo</h2>'
+    + '<p class="lead">Dihitung dari akun yang halamannya terbuka dalam 3 menit terakhir. Akun HO ditandai label HO.</p>'
+    + '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>No Site / Email</th><th>Nama</th><th>Jenis</th><th>Terakhir aktif</th></tr></thead><tbody>'
     + (live.concat(recent).map(row).join('') || '<tr><td colspan="4" class="muted" style="text-align:center;padding:22px">Belum ada aktivitas.</td></tr>')
     + '</tbody></table></div><div class="row-act"><button class="btn" data-act="refreshOnline">Segarkan</button></div></div>'
     + '<div class="card"><h2>Riwayat</h2><div id="logBox" class="small muted">Memuat…</div></div>';
