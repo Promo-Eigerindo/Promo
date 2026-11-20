@@ -78,7 +78,7 @@ textarea.inp{min-height:80px;resize:vertical}
     <div class="err" id="aErr"></div>
     <button type="button" class="btn sm" id="aTest" style="margin-top:4px">Tes koneksi server</button>
     <div class="small muted" id="aTestOut" style="margin-top:8px;line-height:1.5"></div>
-    <div class="small muted" style="margin-top:10px">Versi halaman: 15</div>
+    <div class="small muted" style="margin-top:10px">Versi halaman: 16</div>
   </form>
 </div>
 
@@ -327,7 +327,7 @@ function promoList(list, kind) {
       + (H ? '<span class="meta" style="color:var(--bad);font-weight:700">Ditahan ' + esc(String(p.hold.at || '').slice(0, 10)) + ' oleh ' + esc(p.hold.by || 'admin') + (p.hold.note ? ' · ' + esc(p.hold.note) : '') + '</span><br>' : '')
       + '<span class="meta">' + esc(p.periode || rangeTxt(p.ranges)) + ' · ' + esc(rangeTxt(p.ranges) || 'tanggal belum terbaca')
       + (p.berlaku ? ' · ' + esc(p.berlaku) : '') + ' · ' + (p.ket || []).length + ' ketentuan · ' + (p.contoh || []).length + ' contoh'
-      + (xl ? ' · ' + xl + ' link Excel' : '') + (p.extra || []).map(function (e) { return ' · <b style="color:var(--orange-2)">+ ' + (e.type === 'tier' ? 'detail tiering' : 'teknis eksekusi') + '</b>'; }).join('') + '</span></div>'
+      + (xl ? ' · ' + xl + ' link Excel' : '') + (p.extra || []).map(function (e) { return ' · <b style="color:var(--orange-2)">+ ' + (({ tier: 'detail tiering', eksekusi: 'teknis eksekusi', steps: 'alur langkah' })[e.type] || 'info tambahan') + '</b>'; }).join('') + '</span></div>'
       + (kind === 'r'
         ? '<div class="act">' + (H ? '<button class="btn sm" data-unhold="' + esc(p.id) + '">Lanjutkan</button>' : '<button class="btn sm warnb" data-hold="' + esc(p.id) + '">Hold</button>')
           + '<button class="btn sm danger" data-rdel="' + esc(p.id) + '">Hapus</button></div></div>'
@@ -1020,10 +1020,11 @@ document.addEventListener('drop', function (e) { var d = e.target.closest && e.t
 
 document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('[data-xdel]'); if (!b) return; var r = b.closest('[data-xk]'); if (r && confirm('Hapus lampiran ini dari promo?')) r.remove(); });
 /* ===================================================== slide detail & info tambahan */
-var XT = { tier: 'Detail tiering', eksekusi: 'Teknis eksekusi', info: 'Info tambahan' };
+var XT = { tier: 'Detail tiering', eksekusi: 'Teknis eksekusi', info: 'Info tambahan', steps: 'Alur langkah' };
 function exSummary(e) {
   if (e.type === 'tier') return (e.tiers || []).length + ' tier';
   if (e.type === 'eksekusi') return (e.days || []).length + ' hari';
+  if (e.type === 'steps') return (e.steps || []).length + ' langkah' + ((e.links || []).length ? ' · ' + e.links.length + ' link' : '');
   return e.table ? 'tabel ' + e.table.length + ' baris' : (e.cols || []).length > 1 ? (e.cols || []).length + ' kolom' : 'daftar ' + ((e.cols || [])[0] || []).length + ' baris';
 }
 function extrasCard(W) {
@@ -1054,6 +1055,7 @@ function exPreview(e) {
     + (e.sub ? '<p class="small muted" style="margin:-8px 0 6px">' + esc(e.sub) + '</p>' : '') + (e.lead ? '<p class="small" style="font-weight:700;color:var(--orange-2)">' + esc(e.lead) + '</p>' : '');
   if (e.type === 'tier') h += (e.tiers || []).map(function (t) { return '<div class="fs"><h4>' + esc(t.label) + '</h4>' + t.lines.map(function (l) { return l.big ? '<div style="font-size:22px;font-weight:800">' + esc(l.t) + '</div>' : '<div class="small">' + esc(l.t) + '</div>'; }).join('') + '</div>'; }).join('');
   else if (e.type === 'eksekusi') h += (e.days || []).map(function (d) { return '<div class="fs"><h4>' + esc(d.n + '. ' + d.day) + ' <span class="muted">' + esc(d.sub) + '</span></h4>' + d.items.map(function (it) { return '<div class="small" style="margin:4px 0"><b>' + esc(it.tag) + '</b> ' + esc(it.text) + '</div>'; }).join('') + '</div>'; }).join('');
+  else if (e.type === 'steps') h += (e.steps || []).map(function (st) { return '<div class="fs"><h4>' + esc(st.n + '. ' + st.title) + '</h4><div class="small">' + esc(st.text) + '</div></div>'; }).join('') + (e.links || []).map(function (l) { return '<div class="small">🔗 <a href="' + esc(l.u) + '" target="_blank" rel="noopener">' + esc(l.t) + '</a></div>'; }).join('');
   else {
     if (e.table) h += '<div class="tbl-wrap" style="max-height:none;margin-bottom:12px"><table class="tbl">' + e.table.map(function (r, i) { return '<tr>' + r.map(function (c) { return i ? '<td>' + esc(c) + '</td>' : '<th>' + esc(c) + '</th>'; }).join('') + '</tr>'; }).join('') + '</table></div>';
     h += (e.cols || []).map(function (c) { return '<div class="fs">' + c.map(function (l) { return '<div' + (l.big ? ' style="font-weight:800"' : ' class="small"') + '>' + esc(l.t) + '</div>'; }).join('') + '</div>'; }).join('');
