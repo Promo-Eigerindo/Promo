@@ -57,6 +57,10 @@ textarea.inp{min-height:80px;resize:vertical}
 .err{min-height:20px;color:var(--bad);font-size:13px;font-weight:600;margin-top:8px}
 @media (max-width:640px){.pi{flex-direction:column}.pi .act{width:100%}}
 @media (min-width:960px){.card{padding:22px 24px;margin-top:16px;border-radius:22px}}
+.holdtag{display:inline-block;background:var(--bad);color:#fff;font-size:10px;font-weight:800;letter-spacing:.06em;border-radius:3px;padding:1px 6px;margin-right:6px;vertical-align:1px}
+.pi.held{background:var(--bad-bg)}
+.btn.warnb{color:var(--orange-2);border-color:#F3C3A8}
+.btn.warnb:hover{background:var(--orange-tint);border-color:var(--orange)}
 </style>
 <link rel="stylesheet" href="ppt.css">
 </head>
@@ -74,7 +78,7 @@ textarea.inp{min-height:80px;resize:vertical}
     <div class="err" id="aErr"></div>
     <button type="button" class="btn sm" id="aTest" style="margin-top:4px">Tes koneksi server</button>
     <div class="small muted" id="aTestOut" style="margin-top:8px;line-height:1.5"></div>
-    <div class="small muted" style="margin-top:10px">Versi halaman: 14</div>
+    <div class="small muted" style="margin-top:10px">Versi halaman: 15</div>
   </form>
 </div>
 
@@ -317,14 +321,19 @@ function promoList(list, kind) {
   if (!list.length) return '<p class="muted small">Belum ada promo.</p>';
   return '<div class="plist">' + list.map(function (p, i) {
     var xl = (p.excel || []).length;
-    return '<div class="pi" style="--c:' + colorOf(p.cat) + '"><div class="m">'
-      + '<b><span class="cat">' + esc(p.cat) + '</span>' + esc(p.title || '(tanpa judul)') + '</b>'
+    var H = p.hold && p.hold.on;
+    return '<div class="pi' + (H ? ' held' : '') + '" style="--c:' + colorOf(p.cat) + '"><div class="m">'
+      + '<b><span class="cat">' + esc(p.cat) + '</span>' + (H ? '<span class="holdtag">HOLD</span>' : '') + esc(p.title || '(tanpa judul)') + '</b>'
+      + (H ? '<span class="meta" style="color:var(--bad);font-weight:700">Ditahan ' + esc(String(p.hold.at || '').slice(0, 10)) + ' oleh ' + esc(p.hold.by || 'admin') + (p.hold.note ? ' · ' + esc(p.hold.note) : '') + '</span><br>' : '')
       + '<span class="meta">' + esc(p.periode || rangeTxt(p.ranges)) + ' · ' + esc(rangeTxt(p.ranges) || 'tanggal belum terbaca')
       + (p.berlaku ? ' · ' + esc(p.berlaku) : '') + ' · ' + (p.ket || []).length + ' ketentuan · ' + (p.contoh || []).length + ' contoh'
       + (xl ? ' · ' + xl + ' link Excel' : '') + (p.extra || []).map(function (e) { return ' · <b style="color:var(--orange-2)">+ ' + (e.type === 'tier' ? 'detail tiering' : 'teknis eksekusi') + '</b>'; }).join('') + '</span></div>'
-      + '<div class="act"><button class="btn sm" data-edit="' + kind + '|' + i + '">Ubah</button>'
-      + '<button class="btn sm" data-up="' + i + '">↑</button><button class="btn sm" data-down="' + i + '">↓</button>'
-      + '<button class="btn sm danger" data-del="' + i + '">Hapus</button></div></div>';
+      + (kind === 'r'
+        ? '<div class="act">' + (H ? '<button class="btn sm" data-unhold="' + esc(p.id) + '">Lanjutkan</button>' : '<button class="btn sm warnb" data-hold="' + esc(p.id) + '">Hold</button>')
+          + '<button class="btn sm danger" data-rdel="' + esc(p.id) + '">Hapus</button></div></div>'
+        : '<div class="act"><button class="btn sm" data-edit="' + kind + '|' + i + '">Ubah</button>'
+          + '<button class="btn sm" data-up="' + i + '">↑</button><button class="btn sm" data-down="' + i + '">↓</button>'
+          + '<button class="btn sm danger" data-del="' + i + '">Hapus</button></div></div>');
   }).join('') + '</div>';
 }
 function memoList(list) {
@@ -351,7 +360,7 @@ function viewPromo() {
     + '<div class="small muted">' + esc(B.title || '') + (B.period ? ' · ' + esc(B.period) : '') + (B.updatedAt ? ' · diperbarui ' + esc(B.updatedAt) : '') + '</div>'
     + '<div class="row-act"><button class="btn primary" data-act="editMonth">Edit bulan ini</button>'
     + '<button class="btn danger" data-act="delMonth">Hapus bulan ini</button></div></div>'
-    + '<div class="card"><h2>' + list.length + ' promo</h2>' + promoList(list, 'r') + '</div>'
+    + '<div class="card"><h2>' + list.length + ' promo</h2><p class="lead"><b>Hold</b> = promo ditahan sementara: toko tetap melihatnya, tapi diberi tanda merah DITAHAN dan tidak dihitung berjalan. <b>Hapus</b> = promo hilang dari halaman toko. Keduanya langsung berlaku tanpa terbit ulang.</p>' + promoList(list, 'r') + '</div>'
     + (memos.length ? '<div class="card"><h2>Memo</h2>' + memoList(memos) + '</div>' : '');
 }
 
@@ -1062,6 +1071,30 @@ document.addEventListener('click', function (e) {
   if (b.dataset.xprev != null) exPreview(A.W.extras[+b.dataset.xprev].ex);
   else if (b.dataset.iprev != null) exPreview(A.W.meta.info[+b.dataset.iprev]);
   else if (confirm('Hapus info umum ini? Berlaku setelah kamu terbitkan ulang.')) { A.W.meta.info.splice(+b.dataset.idel, 1); var y = window.scrollY; render(); window.scrollTo(0, y); }
+});
+
+/* ===================================================== hold / lanjutkan / hapus promo yang sudah terbit */
+function promoById(id) { return (A.data.promos || []).filter(function (p) { return String(p.id) === String(id); })[0]; }
+document.addEventListener('click', async function (e) {
+  var b = e.target.closest && e.target.closest('[data-hold],[data-unhold],[data-rdel]'); if (!b) return;
+  var id = b.dataset.hold || b.dataset.unhold || b.dataset.rdel, p = promoById(id); if (!p) { toast('Promo tidak ditemukan, muat ulang halaman.'); return; }
+  var req;
+  if (b.dataset.hold) {
+    var note = prompt('Hold promo "' + p.title + '"?\nToko akan melihat tanda DITAHAN.\n\nAlasan (opsional, tampil ke toko):', '');
+    if (note === null) return;
+    req = { a: 'holdPromo', id: id, on: true, note: note.trim() };
+  } else if (b.dataset.unhold) {
+    if (!confirm('Lanjutkan promo "' + p.title + '"? Tanda DITAHAN di toko akan hilang.')) return;
+    req = { a: 'holdPromo', id: id, on: false };
+  } else {
+    if (!confirm('Hapus promo "' + p.title + '" dari halaman toko?\n\nTidak bisa dibatalkan. Kalau hanya sementara, pakai Hold.')) return;
+    req = { a: 'delPromo', id: id };
+  }
+  b.disabled = true; var y = window.scrollY;
+  try {
+    var r = await post(req); A.data = normData(r.data); render(); window.scrollTo(0, y);
+    toast(req.a === 'delPromo' ? 'Promo dihapus.' : req.on ? 'Promo di-hold. Toko melihat tanda DITAHAN.' : 'Promo dilanjutkan.');
+  } catch (er) { b.disabled = false; toast('Gagal: ' + (er.message || er.code), 6000); }
 });
 
 (function init() {
