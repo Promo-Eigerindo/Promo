@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="app.css?v=16">
 <style>
 /* ---------- kartu promo ---------- */
 .pcard{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;gap:7px;background:#fff;border:1px solid var(--line);
@@ -215,7 +215,7 @@ table.gt{border-collapse:separate;border-spacing:0;font-size:11px;width:100%;min
 .lvt td{padding:7px 10px;border-top:1px solid var(--line)}
 @media (min-width:960px){.ktiles{grid-template-columns:repeat(4,minmax(0,1fr))}.kt b{font-size:28px}}
 </style>
-<link rel="stylesheet" href="ppt.css">
+<link rel="stylesheet" href="ppt.css?v=16">
 </head>
 <body class="locked">
 
@@ -256,9 +256,9 @@ table.gt{border-collapse:separate;border-spacing:0;font-size:11px;width:100%;min
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script src="config.js"></script>
-<script src="icons.js"></script>
-<script src="artikel.js"></script>
-<script src="foto.js"></script>
+<script src="icons.js?v=16"></script>
+<script src="artikel.js?v=16"></script>
+<script src="foto.js?v=16"></script>
 <script>
 'use strict';
 var CFG = window.PROMO_CFG || {};
@@ -1125,12 +1125,19 @@ document.addEventListener('toggle', function (e) {
 /* ===================================================== lampiran promo: tiering & teknis eksekusi */
 /* teks → HTML aman, dengan link dari slide dijadikan bisa diklik */
 function linkify(t, links) {
-  var h = esc(t);
-  (links || []).forEach(function (l) {
-    var k = esc(l.t); if (!k || h.indexOf(k) < 0 || h.indexOf('>' + k + '</a>') >= 0) return;
-    h = h.replace(k, '<a href="' + esc(l.u) + '" target="_blank" rel="noopener" class="xlink">' + k + '</a>');
-  });
-  return h;
+  var L = (links || []).slice(), h = esc(t), A = function (u, k) { return '<a href="' + u + '" target="_blank" rel="noopener" class="xlink">' + k + '</a>'; };
+  var nice = function (u) { return /sharepoint\.com|onedrive|docs\.google|drive\.google/i.test(u) ? 'Buka link ↗' : u.replace(/^https?:\/\//, '').slice(0, 40) + (u.length > 48 ? '…' : '') + ' ↗'; };
+  var parts = h.split(/(https?:\/\/[^\s<]+)/);           // URL polos di teks selalu bisa diklik, ditampilkan pendek
+  return parts.map(function (p, i) {
+    if (i % 2) { var u = p.replace(/[.,;)]+$/, ''); return A(u, nice(u)) + p.slice(u.length); }
+    L.forEach(function (l) {
+      if (/^https?:/i.test(l.t)) return; var k = esc(l.t);
+      if (k && p.indexOf(k) >= 0) p = p.replace(k, A(esc(l.u), k));
+    });
+    var U = L.filter(function (l, j, z) { return z.findIndex(function (m) { return m.u === l.u; }) === j; });
+    if (U.length === 1) p = p.replace(/(^|[\s(])([\w.-]+\.(xlsx|xls|csv|pdf|docx))(?![^<]*<\/a>)/g, function (m, a, fn) { return a + A(esc(U[0].u), fn); });   // nama file di teks → link satu-satunya di slide
+    return p;
+  }).join('');
 }
 function noteBoxes(notes, links) {
   var ICON = { 'CARA HITUNG': '💡', 'SISTEM GWP': '🎁', 'CATATAN STORE': '📌', 'CATATAN': '📌', 'TIPS KASIR': '💡' };
