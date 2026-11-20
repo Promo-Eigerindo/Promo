@@ -434,8 +434,10 @@ function state(p) {
     if (r[0] > D && (!next || r[0] < next)) next = r[0];
     if (r[1] > lastEnd) lastEnd = r[1];
   });
+  if (isHeld(p)) return { hold: true, on: false, next: null, past: false, end: null, left: null, to: null };
   return { on: on, end: end, next: next, past: !on && !next, left: end ? dayDiff(D, end) : null, to: next ? dayDiff(D, next) : null };
 }
+function isHeld(p) { return !!(p && p.hold && p.hold.on); }
 function rangeTxt(rs) {
   return (rs || []).map(function (r) {
     if (r[0] === r[1]) return fmtDateS(r[0]);
@@ -445,6 +447,7 @@ function rangeTxt(rs) {
 }
 function colorOf(cat) { return PPT_CAT[cat] || (CFG.CATS || {})[cat] || PPT_CAT.Lainnya; }
 function badgeOf(S) {
+  if (S.hold) return '<span class="tg held">⛔ DITAHAN, jangan dijalankan</span>';
   if (S.on) {
     if (S.left === 0) return '<span class="tg hot">Hari terakhir</span>';
     if (S.left <= 3) return '<span class="tg hot">Berakhir ' + S.left + ' hari lagi</span>';
@@ -454,21 +457,23 @@ function badgeOf(S) {
   return '<span class="tg">Sudah berakhir</span>';
 }
 function promoCard(p) {
-  return '<button class="pcard" data-p="' + esc(p.id) + '" style="--c:' + colorOf(p.cat) + '">'
+  var H = isHeld(p);
+  return '<button class="pcard' + (H ? ' held' : '') + '" data-p="' + esc(p.id) + '" style="--c:' + colorOf(p.cat) + '">'
     + '<span class="cat">' + esc(catLabel(p.cat)) + '</span><b>' + esc(p.title) + '</b>' + badgeOf(state(p))
+    + (H && p.hold.note ? '<span class="hnote">' + esc(p.hold.note) + '</span>' : '')
     + '<span class="meta"><span>' + svg('cal') + esc(rangeTxt(p.ranges)) + (p.exact ? '' : ' · lihat ketentuan') + '</span>'
-    + (p.minTrx && !/tidak ada/i.test(p.minTrx) ? '<span>' + svg('tag') + 'Min. ' + esc(p.minTrx) + '</span>' : '')
+    + (p.minTrx && !/tidak ada/i.test(p.minTrx) ? '<span>' + svg('tag') + 'Min. ' + esc(String(p.minTrx).replace(/^\s*min(imal|\.)?\s*/i, '')) + '</span>' : '')
     + (p.excel && p.excel.length ? '<span>' + svg('sheet') + p.excel.length + ' file list artikel</span>' : '')
     + (p.extra || []).map(function (e) { return '<span class="xtra">' + svg(e.type === 'tier' ? 'list' : e.type === 'eksekusi' ? 'clock' : 'file') + (({ tier: 'Ada detail tiering', eksekusi: 'Ada teknis eksekusi' })[e.type] || 'Ada info tambahan') + '</span>'; }).join('') + '</span></button>';
 }
 function monthPromos() { return (App.data.promos || []).filter(function (p) { return p.month === App.month; }).sort(byPrio); }
 function monthMemos() { return (App.data.memos || []).filter(function (m) { return m.month === App.month; }); }
 function split(list) {
-  var on = [], soon = [], past = [];
-  list.forEach(function (p) { var S = state(p); (S.on ? on : S.next ? soon : past).push(p); });
+  var on = [], soon = [], past = [], hold = [];
+  list.forEach(function (p) { var S = state(p); (S.hold ? hold : S.on ? on : S.next ? soon : past).push(p); });
   on.sort(function (a, b) { return catRank(a.cat) - catRank(b.cat) || (state(a).left || 99) - (state(b).left || 99) || byPrio(a, b); });
   soon.sort(function (a, b) { return catRank(a.cat) - catRank(b.cat) || (state(a).to || 99) - (state(b).to || 99) || byPrio(a, b); });
-  return { on: on, soon: soon, past: past };
+  return { on: on, soon: soon, past: past, hold: hold };
 }
 function liveSites() { return (App.online || []).filter(function (o) { return o.ago < 180 && o.kind === 'site'; }); }
 
@@ -558,6 +563,7 @@ function vHome() {
   var INF = (B.info || []);
   if (INF.length) h += '<section class="panel"><div class="ph"><h2>Info tambahan</h2><span class="sub" style="margin-left:auto">' + INF.length + ' info</span></div><div class="xl">'
     + INF.map(function (e, k) { return '<button class="xb" data-info="' + k + '"><span class="x" style="background:var(--orange-tint);color:var(--orange-2)">' + svg('file') + '</span><span><b>' + esc(e.title || 'Info tambahan') + '</b><small>' + esc(e.sub || e.lead || '') + '</small></span><span class="go">' + svg('next') + '</span></button>'; }).join('') + '</div></section>';
+  if (S.hold.length) h += '<section class="panel heldp"><div class="ph"><h2>⛔ Promo ditahan</h2><span class="sub" style="margin-left:auto">jangan dijalankan dulu</span></div><div class="hscroll">' + S.hold.map(promoCard).join('') + '</div></section>';
   h += '<section class="panel"><div class="ph"><h2>Sedang berjalan</h2><button class="more" data-go="jalan" data-tab="on">Selengkapnya</button></div>'
     + (S.on.length ? '<div class="hscroll">' + S.on.map(promoCard).join('') + '</div>' : '<div class="empty">Tidak ada promo yang berjalan hari ini.</div>') + '</section>';
   h += '<section class="panel"><div class="ph"><h2>Akan berjalan</h2><button class="more" data-go="jalan" data-tab="soon">Selengkapnya</button></div>'
@@ -576,7 +582,7 @@ function ringkasan(list, per) {
         var L = list.filter(function (p) { return p.cat === c; });
         return '<div class="rkc" style="--c:' + colorOf(c) + '"><div class="rk-h">' + esc(catLabel(c)) + '</div><div class="rk-n"><b>' + L.length + '</b><small>Promo</small></div><ul>'
           + L.map(function (p) {
-              var S = state(p), st = S.on ? '<span class="on">● berjalan' + (S.left != null && S.left <= 3 ? ', ' + (S.left === 0 ? 'hari terakhir' : S.left + ' hari lagi') : '') + '</span>' : S.next ? '<span class="nx">mulai ' + fmtDateS(S.next) + '</span>' : '<span class="ed">selesai</span>';
+              var S = state(p), st = S.hold ? '<span class="hd">⛔ ditahan</span>' : S.on ? '<span class="on">● berjalan' + (S.left != null && S.left <= 3 ? ', ' + (S.left === 0 ? 'hari terakhir' : S.left + ' hari lagi') : '') + '</span>' : S.next ? '<span class="nx">mulai ' + fmtDateS(S.next) + '</span>' : '<span class="ed">selesai</span>';
               return '<li><button data-p="' + esc(p.id) + '"><span>' + esc(shortT(p.title)) + (p.exact && !isWhole(p, m) ? ' (' + esc(rangeTxt(p.ranges)) + ')' : '') + st + '</span></button></li>';
             }).join('') + '</ul></div>';
       }).join('') + '</div></div></section>';
@@ -586,7 +592,9 @@ function vJalan() {
   return '<section class="sheet">' + head('Promo hari ini', fmtDate(App.today) + ' · ' + fmtMonth(App.month))
     + '<div class="seg" style="margin-bottom:14px"><button data-tab="on" class="' + (t === 'on' ? 'on' : '') + '">Berjalan (' + S.on.length + ')</button>'
     + '<button data-tab="soon" class="' + (t === 'soon' ? 'on' : '') + '">Akan datang (' + S.soon.length + ')</button>'
-    + '<button data-tab="past" class="' + (t === 'past' ? 'on' : '') + '">Selesai (' + S.past.length + ')</button></div>'
+    + '<button data-tab="past" class="' + (t === 'past' ? 'on' : '') + '">Selesai (' + S.past.length + ')</button>'
+    + (S.hold.length ? '<button data-tab="hold" class="' + (t === 'hold' ? 'on' : '') + '" style="color:var(--bad)">Ditahan (' + S.hold.length + ')</button>' : '') + '</div>'
+    + (t !== 'hold' && S.hold.length ? '<div class="holdbar" data-tab="hold">⛔ <b>' + S.hold.length + ' promo sedang DITAHAN</b>, jangan dijalankan dulu. Lihat daftarnya.</div>' : '')
     + (L.length ? '<div class="cards">' + L.map(promoCard).join('') + '</div>' : '<div class="empty">Tidak ada promo di daftar ini.</div>') + '</section>';
 }
 function vKalender() {
@@ -674,13 +682,13 @@ function timeline(list) {
   var g = '<div class="tl-g" style="--d:' + n + '"><div class="tl-n" style="font-size:11px;color:var(--muted)">PROMO</div>';
   for (var d = 1; d <= n; d++) g += '<div class="tl-dh' + (we(d) ? ' we' : '') + '" style="grid-column:' + (d + 1) + '">' + d + '</div>';
   bars.forEach(function (p, i) {
-    var row = i + 2, c = colorOf(p.cat);
+    var row = i + 2, c = isHeld(p) ? '#9AA3AF' : colorOf(p.cat);
     g += '<div class="tl-n" style="grid-row:' + row + '"><button data-p="' + esc(p.id) + '">' + esc(shortT(p.title)) + '</button></div>';
     for (var k = 1; k <= n; k++) g += '<div class="tl-c' + (we(k) ? ' we' : '') + (td(k) ? ' td' : '') + '" style="grid-row:' + row + ';grid-column:' + (k + 1) + '"></div>';
     (p.ranges || []).forEach(function (r) {
       if (r[1] < m + '-01' || r[0] > m + '-' + pad(n)) return;
       var s0 = r[0] < m + '-01' ? 1 : +r[0].slice(8), e0 = r[1] > m + '-' + pad(n) ? n : +r[1].slice(8);
-      g += '<button class="tl-bar' + (p.exact ? '' : ' dash') + '" data-p="' + esc(p.id) + '" title="' + esc(p.title) + '" style="--c:' + c + ';grid-row:' + row + ';grid-column:' + (s0 + 1) + ' / ' + (e0 + 2) + '">' + (s0 === e0 ? s0 : s0 + '–' + e0) + '</button>';
+      g += '<button class="tl-bar' + (p.exact && !isHeld(p) ? '' : ' dash') + '" data-p="' + esc(p.id) + '" title="' + esc(p.title + (isHeld(p) ? ' (DITAHAN)' : '')) + '" style="--c:' + c + ';grid-row:' + row + ';grid-column:' + (s0 + 1) + ' / ' + (e0 + 2) + '">' + (s0 === e0 ? s0 : s0 + '–' + e0) + '</button>';
     });
   });
   g += '</div>';
@@ -707,14 +715,14 @@ function shortT(t) { return String(t || '').replace(/^promo\s+/i, ''); }
 function agenda(bars, col) {
   var L = bars.slice().sort(function (a, b) { var x = (a.ranges[0] || [''])[0], y = (b.ranges[0] || [''])[0]; return x < y ? -1 : x > y ? 1 : catRank(a.cat) - catRank(b.cat); });
   return '<div class="kag"><h4>Jadwal promo bertanggal</h4>' + L.map(function (p) {
-    var S = state(p), tag = S.on ? '<span class="tg ok">berjalan</span>' : S.next ? '<span class="tg warm">' + (S.to === 1 ? 'besok' : S.to + ' hari lagi') + '</span>' : '<span class="tg">selesai</span>';
+    var S = state(p), tag = S.hold ? '<span class="tg held">ditahan</span>' : S.on ? '<span class="tg ok">berjalan</span>' : S.next ? '<span class="tg warm">' + (S.to === 1 ? 'besok' : S.to + ' hari lagi') + '</span>' : '<span class="tg">selesai</span>';
     return '<button class="kai" data-p="' + esc(p.id) + '"><i style="--c:' + col[p.id] + '"></i><span><b>' + esc(p.title) + '</b><small>' + esc(rangeTxt(p.ranges)) + ' · ' + esc(p.cat) + '</small></span>' + tag + '</button>';
   }).join('') + '</div>';
 }
 function kalender(list, sel) {
   var m = App.month, n = dimOf(m), a = m + '-01', yr = m.slice(0, 4), mi = +m.slice(5) - 1;
   var whole = list.filter(function (p) { return isWhole(p, m); }), bars = list.filter(function (p) { return !isWhole(p, m); });
-  var col = {}; bars.forEach(function (p, i) { col[p.id] = BAR_PAL[i % BAR_PAL.length]; });
+  var col = {}; bars.forEach(function (p, i) { col[p.id] = isHeld(p) ? '#9AA3AF' : BAR_PAL[i % BAR_PAL.length]; });
   var off = (dowOf(a) + 6) % 7, weeks = [], d = 1 - off, k;
   while (d <= n) { var w0 = []; for (k = 0; k < 7; k++) w0.push(d++); weeks.push(w0); }
   var body = weeks.map(function (w) {
@@ -769,6 +777,7 @@ function openPromo(id) {
   var mark = function (ok) { return ok ? '<span class="ok" aria-label="berhasil">' + svg('check') + '</span>' : '<span class="no" aria-label="tidak berlaku">' + svg('x') + '</span>'; };
   var html = '<div class="ov" id="ov"><div class="drawer sld" role="dialog" aria-modal="true" aria-label="' + esc(p.title) + '" style="--c:' + c + '">'
     + '<div class="sld-top"><div class="sld-hd"><h2>' + esc(p.title) + '</h2><span class="cap">SYARAT KETENTUAN &amp; CONTOH PENERAPAN</span><button class="x" data-close aria-label="Tutup">' + svg('x') + '</button></div><div class="sld-acc"></div></div>'
+    + (isHeld(p) ? '<div class="holdban"><b>⛔ PROMO INI SEDANG DITAHAN (HOLD)</b><span>Jangan dijalankan di kasir sampai ada info lanjutan dari admin.' + (p.hold.note ? ' Alasan: ' + esc(p.hold.note) + '.' : '') + ' Ditahan sejak ' + fmtDate(String(p.hold.at || '').slice(0, 10)) + '.</span></div>' : '')
     + '<div class="sld-meta"><span class="dcat">' + esc(catLabel(p.cat)) + '</span>' + badgeOf(state(p)) + '</div>'
     + '<div class="sld-cols"><div>'
       + '<h3 class="sl-sec">Syarat &amp; Ketentuan</h3><dl class="skr" style="margin:0">' + row('Periode', p.periode || rangeTxt(p.ranges)) + row('Min. Transaksi', p.minTrx) + row('Maks. Transaksi', p.maxTrx)
