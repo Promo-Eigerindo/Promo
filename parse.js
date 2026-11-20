@@ -32,10 +32,18 @@
     var pdf = await lib.getDocument({ data: new Uint8Array(buf) }).promise, pages = [];
     for (var p = 1; p <= pdf.numPages; p++) {
       var pg = await pdf.getPage(p), vp = pg.getViewport({ scale: 1 }), tc = await pg.getTextContent();
-      pages.push(tc.items.filter(function (i) { return i.str.trim(); }).map(function (i) {
+      var its = tc.items.filter(function (i) { return i.str.trim(); }).map(function (i) {
         return { s: i.str.replace(/\s+/g, ' '), x: i.transform[4] / vp.width * 720, w: (i.width || 0) / vp.width * 720,
                  y: (vp.height - i.transform[5]) / vp.height * 405, h: i.height / vp.height * 405 };
-      }));
+      });
+      try {
+        (await pg.getAnnotations()).forEach(function (a) {
+          if (a.subtype !== 'Link' || !a.url || !a.rect) return;
+          var x0 = a.rect[0] / vp.width * 720 - 1, x1 = a.rect[2] / vp.width * 720 + 1, yt = (vp.height - a.rect[3]) / vp.height * 405 - 2, yb = (vp.height - a.rect[1]) / vp.height * 405 + 2;
+          its.forEach(function (i) { var cx = i.x + (i.w || 0) / 2; if (cx >= x0 && cx <= x1 && i.y >= yt && i.y - i.h <= yb) (i.links = i.links || []).push({ t: i.s.trim(), u: a.url }); });
+        });
+      } catch (e) {}
+      pages.push(its);
     }
     return pages;
   }
@@ -52,7 +60,7 @@
     }
     return null;
   }
-  function pptItems(xml, CX, CY) {
+  function pptItems(xml, CX, CY, rel) {
     var doc = new DOMParser().parseFromString(xml, 'application/xml');
     var sx = 720 / CX, sy = 405 / CY, ptY = 405 / (CY / 12700), out = [];
 
@@ -64,7 +72,12 @@
         var rPr = p.getElementsByTagName('a:rPr')[0];
         var sz = rPr && rPr.getAttribute('sz') ? +rPr.getAttribute('sz') / 100 : 16;
         var h = Math.max(6, sz * ptY);
-        if (s) out.push({ s: s, x: x, y: y + dy, h: h });
+        var lk = [];
+        tag(p, 'a:r').forEach(function (r) {
+          var hl = r.getElementsByTagName('a:hlinkClick')[0], id = hl && (hl.getAttribute('r:id') || hl.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'id'));
+          var t = textOf(r); if (id && rel && rel[id] && t) lk.push({ t: t, u: rel[id] });
+        });
+        if (s) out.push(lk.length ? { s: s, x: x, y: y + dy, h: h, links: lk } : { s: s, x: x, y: y + dy, h: h });
         dy += h * 1.35;
       });
     });
@@ -104,7 +117,9 @@
     var pages = [];
     for (var i = 0; i < files.length; i++) {
       var f = zip.file(files[i]); if (!f) continue;
-      pages.push(pptItems(await f.async('string'), CX, CY));
+      var rf = zip.file(files[i].replace(/slides\/(slide\d+\.xml)$/, 'slides/_rels/$1.rels')), rel = {};
+      if (rf) { var rx = await rf.async('string'), rr, re2 = /<Relationship\b[^>]*>/g; while ((rr = re2.exec(rx))) { var idm = rr[0].match(/Id="([^"]+)"/), tm = rr[0].match(/Target="([^"]+)"/); if (idm && tm && /^https?:|^mailto:/i.test(tm[1])) rel[idm[1]] = tm[1].replace(/&amp;/g, '&'); } }
+      pages.push(pptItems(await f.async('string'), CX, CY, rel));
     }
     return pages;
   }
@@ -258,8 +273,9 @@
   function notesOf(items, yFrom) {
     var out = [], cur = null;
     lines(items, 0, 721).filter(function (l) { return l.y > yFrom && l.y < 392 && !/^EIGER ADVENTURE/i.test(l.t); }).forEach(function (l) {
-      var t = l.t.replace(/^[^A-Za-z0-9]+(?=[A-Z])/, ''), m = t.match(/^([A-Z][A-Z &/]{2,30}):\s*(.*)$/);
-      if (m) { cur = { label: m[1].trim(), text: m[2] }; out.push(cur); }
+      var ic = (l.t.match(/^([^A-Za-z0-9]+)(?=[A-Z])/) || [])[1] || '', t = l.t.replace(/^[^A-Za-z0-9]+(?=[A-Z])/, ''), m = t.match(/^([A-Z][A-Z &/]{2,30}):\s*(.*)$/);
+      ic = ic.replace(/\s+/g, '');
+      if (m) { cur = { label: m[1].trim(), text: m[2] }; if (/[\uD800-\uDFFF\u2600-\u27BF]/.test(ic)) cur.icon = ic; out.push(cur); }
       else if (cur) cur.text += (cur.text ? ' ' : '') + t;
       else { cur = { label: '', text: t }; out.push(cur); }
     });
@@ -304,9 +320,40 @@
     });
     return { type: 'eksekusi', title: H.title, sub: H.sub, lead: H.lead, days: days, notes: notesOf(items, yN - 1) };
   }
+  /* ---- alur langkah: lingkaran nomor 1,2,3,… sejajar dalam satu baris → kartu langkah */
+  function stepNums(items) {
+    var nums = items.filter(function (i) { return /^\d{1,2}$/.test(i.s.trim()) && i.y > 52 && i.h >= 9; });
+    var best = null;
+    nums.forEach(function (a) {
+      var row = nums.filter(function (b) { return Math.abs(b.y - a.y) <= 8; }).sort(function (p, q) { return p.x - q.x; });
+      var ok = row.length >= 3 && row.length <= 8 && row.every(function (r, k) { return +r.s.trim() === k + 1; });
+      if (ok && (!best || row.length > best.length)) best = row;
+    });
+    return best;
+  }
+  function readSteps(items) {
+    var H = slideHead(items), N = stepNums(items), yTop = N[0].y, yN = noteStartY(items, yTop);
+    var steps = N.map(function (n, k) {
+      var x0 = n.x - 12, x1 = k < N.length - 1 ? N[k + 1].x - 12 : 721;
+      var R = rowsIn(items.filter(function (i) { return i !== n && /[A-Za-z0-9]/.test(i.s) && !/^EIGER ADVENTURE/i.test(i.s); }), x0, x1, n.y - 4, yN)
+        .filter(function (r) { return !/^\d{1,2}$/.test(r.t); });
+      var hT = R.length ? R[0].h : 0, minH = Math.min.apply(null, R.map(function (r) { return r.h; }).concat([99]));
+      var nt = 1; if (hT > minH + 0.8) { while (nt < R.length && Math.abs(R[nt].h - hT) < 0.8) nt++; }
+      return { n: n.s.trim(), title: R.slice(0, nt).map(function (r) { return r.t; }).join(' '), text: R.slice(nt).map(function (r) { return r.t; }).join(' ') };
+    });
+    return { type: 'steps', title: H.title, sub: H.sub, lead: H.lead, steps: steps, notes: notesOf(items, yN - 1) };
+  }
+  /* semua link di slide (teks → URL), dipakai untuk membuat teks yang sama bisa diklik di web */
+  function slideLinks(items) {
+    var seen = {}, out = [];
+    items.forEach(function (i) { (i.links || []).forEach(function (l) { var t = l.t.replace(/^[^A-Za-z0-9]+/, '').trim(); if (t && !seen[t + l.u]) { seen[t + l.u] = 1; out.push({ t: t, u: l.u }); } }); });
+    return out;
+  }
   function slideKind(items) {
     if (items.filter(function (i) { return /^TIER\s*\d+$/i.test(i.s.trim()); }).length >= 2) return 'tier';
     if (items.filter(function (i) { return DAYS.test(i.s.trim()) && i.h >= 10; }).length >= 2 && !items.some(function (i) { return /SYARAT\s*&?\s*KETENTUAN/i.test(i.s); })) return 'eksekusi';
+    var tx = items.map(function (i) { return i.s; }).join(' ');
+    if (!SKIP_RE.test(tx) && !/SYARAT\s*&?\s*KETENTUAN/i.test(tx) && stepNums(items)) return 'steps';
     return '';
   }
   /* ---- cadangan: slide detail bentuk lain → "info tambahan" (tabel / kartu per kolom / daftar) */
@@ -363,7 +410,7 @@
       var want = toks(ex.sub + ' ' + ex.title.replace(/^(teknis eksekusi|tiering|detail)\s*[—–-]?\s*/i, '')), best = null, bs = 0;
       promos.forEach(function (p) { var pt = toks(p.title), sc = want.filter(function (w) { return pt.indexOf(w) >= 0; }).length; if (sc > bs) { bs = sc; best = p; } });
       if (!best || bs < 2) {
-        if (ex.type === 'info') { ex.to = ''; return; }                     // info tambahan tanpa promo yang mirip → info umum bulan ini
+        if (ex.type === 'info' || ex.type === 'steps') { ex.to = ''; return; }                     // info tambahan tanpa promo yang mirip → info umum bulan ini
         var prev = promos.filter(function (p) { return p.slide < ex.slide; }); best = prev[prev.length - 1] || best;
       }
       if (best) { (best.extra = best.extra || []).push(ex); ex.to = best.title; }
@@ -376,7 +423,7 @@
       var big = items.filter(function (i) { return i.h >= 20; }).map(function (i) { return i.s.trim(); }).join(' ').trim();
 
       var kind = slideKind(items);
-      if (kind) { var ex = kind === 'tier' ? readTier(items) : readEksekusi(items); ex.slide = idx + 1; extras.push(ex); return; }
+      if (kind) { var ex = kind === 'tier' ? readTier(items) : kind === 'steps' ? readSteps(items) : readEksekusi(items); ex.slide = idx + 1; ex.links = slideLinks(items); extras.push(ex); return; }
       if (/PETUNJUK\s+TEKNIS/i.test(txt) && !/SYARAT/i.test(U)) {
         var cv = txt.replace(/\s+/g, ' ').match(/Petunjuk\s+Teknis\s+Promo\s+([A-Za-z+& ]{3,20})/i);   // "Petunjuk Teknis Promo Tambahan"
         if (cv && !/^program/i.test(cv[1].trim()) && KNOWN.test(cv[1])) cat = catName(cv[1].trim());
@@ -401,7 +448,7 @@
         var m2 = readMemo(items, all); m2.slide = idx + 1; memos.push(m2);
         return;
       }
-      if (txt.trim() && !SKIP_RE.test(txt) && all.length >= 2) { var gx = readGeneric(items); gx.slide = idx + 1; if (gx.title || (gx.cols || []).length || gx.table) { extras.push(gx); return; } }
+      if (txt.trim() && !SKIP_RE.test(txt) && all.length >= 2) { var gx = readGeneric(items); gx.slide = idx + 1; gx.links = slideLinks(items); if (gx.title || (gx.cols || []).length || gx.table) { extras.push(gx); return; } }
       if (txt.trim()) unknown.push({ slide: idx + 1, text: txt.slice(0, 500) });
     });
 
