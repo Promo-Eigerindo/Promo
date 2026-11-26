@@ -94,6 +94,124 @@
     });
     return out;
   }
+  /* ------------------------------------------------ bentuk slide (untuk tampilan "seperti PPT") */
+  /* setiap shape → [x, y, w, h, geom, fill, line, paras, anchor, radius]; paras = [[align, [[teks, gaya, pt, warna, link]]]] */
+  var SCHEME = { lt1: 'FFFFFF', bg1: 'FFFFFF', dk1: '000000', tx1: '000000', lt2: 'E7E6E6', dk2: '44546A' };
+  function kids(el, name) { return Array.prototype.filter.call(el.childNodes, function (n) { return n.nodeName === name; }); }
+  function kid(el, name) { return el ? kids(el, name)[0] || null : null; }
+  function colorOf(el) {                       // a:solidFill → 'RRGGBB' / 'RRGGBBAA'
+    if (!el) return '';
+    var c = kid(el, 'a:srgbClr') || kid(el, 'a:schemeClr'); if (!c) return '';
+    var v = c.nodeName === 'a:srgbClr' ? c.getAttribute('val') : SCHEME[c.getAttribute('val')] || '';
+    if (!v) return '';
+    var al = kid(c, 'a:alpha'); if (al) { var a = Math.round(+al.getAttribute('val') / 100000 * 255); if (a < 250) v += ('0' + a.toString(16)).slice(-2); }
+    return v.toUpperCase();
+  }
+  function parasOf(txBody, rel) {
+    if (!txBody) return [];
+    var lstSz = null, out = [];
+    kids(txBody, 'a:p').forEach(function (p) {
+      var pPr = kid(p, 'a:pPr'), al = pPr && pPr.getAttribute('algn'), runs = [];
+      Array.prototype.forEach.call(p.childNodes, function (r) {
+        if (r.nodeName === 'a:br') { runs.push(['\n', '', 0, '', '']); return; }
+        if (r.nodeName !== 'a:r' && r.nodeName !== 'a:fld') return;
+        var t = kid(r, 'a:t'); t = t ? t.textContent : ''; if (!t) return;
+        var pr = kid(r, 'a:rPr'), st = '', sz = 0, col = '', ln = '';
+        if (pr) {
+          if (pr.getAttribute('b') === '1') st += 'b';
+          if (pr.getAttribute('i') === '1') st += 'i';
+          if (pr.getAttribute('u') && pr.getAttribute('u') !== 'none') st += 'u';
+          sz = pr.getAttribute('sz') ? +pr.getAttribute('sz') / 100 : 0;
+          col = colorOf(kid(pr, 'a:solidFill'));
+          var hl = kid(pr, 'a:hlinkClick'), id = hl && (hl.getAttribute('r:id') || hl.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'id'));
+          if (id && rel && rel[id]) ln = rel[id];
+        }
+        runs.push([t, st, sz, col, ln]);
+      });
+      var end = kid(p, 'a:endParaRPr');
+      if (!runs.length) runs.push(['', '', end && end.getAttribute('sz') ? +end.getAttribute('sz') / 100 : 0, '', '']);
+      out.push([al === 'ctr' ? 'c' : al === 'r' ? 'r' : al === 'just' ? 'j' : '', runs]);
+    });
+    while (out.length && out[out.length - 1][1].every(function (r) { return !r[0].trim(); })) out.pop();
+    return out;
+  }
+  function pptShapes(xml, CX, CY, rel) {
+    var doc = new DOMParser().parseFromString(xml, 'application/xml'), K = 720 / CX, out = [];
+    var tree = doc.getElementsByTagName('p:spTree')[0]; if (!tree) return out;
+    function walk(node, T) {                                   // T = transform grup: x' = ox + (x - cx) * s
+      Array.prototype.forEach.call(node.childNodes, function (el) {
+        var n = el.nodeName;
+        if (n === 'p:grpSp') {
+          var gx = kid(kid(el, 'p:grpSpPr'), 'a:xfrm');
+          if (!gx) return walk(el, T);
+          var o = kid(gx, 'a:off'), e = kid(gx, 'a:ext'), co = kid(gx, 'a:chOff'), ce = kid(gx, 'a:chExt');
+          var sx = ce && +ce.getAttribute('cx') ? +e.getAttribute('cx') / +ce.getAttribute('cx') : 1, sy = ce && +ce.getAttribute('cy') ? +e.getAttribute('cy') / +ce.getAttribute('cy') : 1;
+          var ox = +o.getAttribute('x'), oy = +o.getAttribute('y'), cx = co ? +co.getAttribute('x') : ox, cy = co ? +co.getAttribute('y') : oy;
+          walk(el, function (x, y, w, h) { var a = [ox + (x - cx) * sx, oy + (y - cy) * sy, w * sx, h * sy]; return T ? T.apply(null, a) : a; });
+          return;
+        }
+        if (n !== 'p:sp' && n !== 'p:cxnSp' && n !== 'p:graphicFrame') return;
+        var spPr = kid(el, 'p:spPr'), xf = n === 'p:graphicFrame' ? kid(el, 'p:xfrm') : kid(spPr, 'a:xfrm');
+        if (!xf) return;
+        var off = kid(xf, 'a:off'), ext = kid(xf, 'a:ext'); if (!off || !ext) return;
+        var b = [+off.getAttribute('x'), +off.getAttribute('y'), +ext.getAttribute('cx'), +ext.getAttribute('cy')];
+        if (T) b = T(b[0], b[1], b[2], b[3]);
+        var x = b[0] * K, y = b[1] * K, w = b[2] * K, h = b[3] * K;
+        if (x + w < 1 || y + h < 1 || x > 719 || y > 404) return;                // di luar slide
+        var R = function (v) { return Math.round(v * 10) / 10; };
+        if (n === 'p:graphicFrame') {                                             // tabel asli → sel-sel
+          var tbl = el.getElementsByTagName('a:tbl')[0]; if (!tbl) return;
+          var cols = tag(tbl, 'a:gridCol').map(function (g) { return +g.getAttribute('w') * K; }), TR = [], th = 0;
+          var tp = kid(tbl, 'a:tblPr'), fRow = tp && tp.getAttribute('firstRow') === '1', bRow = tp && tp.getAttribute('bandRow') === '1';
+          tag(tbl, 'a:tr').forEach(function (tr, ri) {
+            var rh = +tr.getAttribute('h') * K, cells = []; th += rh;
+            kids(tr, 'a:tc').forEach(function (tc) {
+              if (tc.getAttribute('hMerge') === '1' || tc.getAttribute('vMerge') === '1') { cells.push(0); return; }
+              var pr = kid(tc, 'a:tcPr'), ps = parasOf(kid(tc, 'a:txBody'), rel), cf = pr ? colorOf(kid(pr, 'a:solidFill')) : '';
+              var lnB = pr && kid(pr, 'a:lnB'), lc = lnB ? colorOf(kid(lnB, 'a:solidFill')) : '';
+              if (!cf && !(pr && kid(pr, 'a:noFill'))) {                         // gaya tabel bawaan → header navy, baris selang-seling
+                if (fRow && ri === 0) { cf = '073763'; ps.forEach(function (q) { q[1].forEach(function (r) { if (!r[3]) r[3] = 'FFFFFF'; if (r[1].indexOf('b') < 0) r[1] += 'b'; }); }); }
+                else cf = bRow && ri % 2 === 0 ? 'F1F5F9' : 'FFFFFF';
+              }
+              cells.push([cf, lc || 'E2E8F0', ps, +tc.getAttribute('gridSpan') || 1, +tc.getAttribute('rowSpan') || 1, pr && pr.getAttribute('anchor') === 'ctr' ? 'c' : '']);
+            });
+            TR.push([R(rh), cells]);
+          });
+          out.push([R(x), R(y), R(w), R(Math.max(h, th)), 'T', '', '', { c: cols.map(R), r: TR, hd: fRow ? 1 : 0 }, '', 0]);
+          return;
+        }
+        var g = kid(spPr, 'a:prstGeom'), geom = g ? g.getAttribute('prst') : '';
+        var G = n === 'p:cxnSp' ? 'l' : geom === 'ellipse' ? 'e' : geom === 'roundRect' ? 'R' : geom === 'rightArrow' || geom === 'chevron' || geom === 'triangle' ? 'a' : 'r';
+        var fill = kid(spPr, 'a:noFill') ? '' : colorOf(kid(spPr, 'a:solidFill'));
+        var lnE = kid(spPr, 'a:ln'), line = lnE && !kid(lnE, 'a:noFill') ? colorOf(kid(lnE, 'a:solidFill')) : '';
+        var lw = lnE && lnE.getAttribute('w') ? Math.max(0.5, +lnE.getAttribute('w') / 12700) : 0.75;
+        var rad = 0; if (G === 'R') { var gd = g.getElementsByTagName('a:gd')[0], adj = gd ? +(String(gd.getAttribute('fmla')).replace(/\D/g, '')) : 16667; rad = R(Math.min(w, h) * adj / 100000); }
+        var tx = kid(el, 'p:txBody'), bp = tx && kid(tx, 'a:bodyPr'), anc = bp && bp.getAttribute('anchor');
+        var ps = parasOf(tx, rel), hasT = ps.some(function (p) { return p[1].some(function (r) { return r[0].trim(); }); });
+        if (!hasT) ps = [];
+        if (!fill && !line && !ps.length) return;                                 // tidak terlihat
+        var ins = bp ? [bp.getAttribute('lIns'), bp.getAttribute('tIns'), bp.getAttribute('rIns'), bp.getAttribute('bIns')].map(function (v, i) { return v == null ? (i % 2 ? 3.6 : 7.2) : R(+v / 12700); }) : 0;
+        var sh = [R(x), R(y), R(w), R(h), G, G === 'l' ? '' : fill, line, ps, anc === 'ctr' ? 'c' : anc === 'b' ? 'b' : '', rad];
+        if (line && Math.abs(lw - 0.75) > 0.2) sh.push(R(lw)); else sh.push(0);
+        if (ins && ins.join() !== '7.2,3.6,7.2,3.6') sh.push(ins);
+        out.push(sh);
+      });
+    }
+    walk(tree, null);
+    return out;
+  }
+  /* buang kepala slide (pita judul) & kaki slide; sisanya disimpan ringkas */
+  function layoutOf(shapes) {
+    if (!shapes || !shapes.length) return null;
+    var top = 0, bot = 405;
+    shapes.forEach(function (s) { if (s[1] < 4 && s[3] < 70 && s[2] > 600 && s[5]) top = Math.max(top, s[1] + s[3]); });          // pita judul
+    shapes.forEach(function (s) { if (s[1] < top + 8 && s[1] >= top - 1 && s[3] <= 8 && s[2] > 600) top = Math.max(top, s[1] + s[3]); }); // garis aksen di bawahnya
+    shapes.forEach(function (s) { if (s[1] > 360 && s[2] > 600 && s[5] && s[3] < 40) bot = Math.min(bot, s[1]); });                // pita kaki
+    var body = shapes.filter(function (s) { return s[1] >= top - 1 && s[1] + s[3] <= bot + 1 && !(s[1] < top + 2 && s[3] < 2); });
+    if (body.filter(function (s) { return s[4] === 'T' || s[7].length; }).length < 2) return null;
+    var lo = Math.min.apply(null, body.map(function (s) { return s[1]; })), hi = Math.max.apply(null, body.map(function (s) { return s[1] + s[3]; }));
+    return { y0: Math.max(top, lo - 8), y1: Math.min(bot, hi + 10), s: body };            // potong ruang kosong atas/bawah
+  }
   async function itemsFromPptx(buf) {
     var Z = await zipLib(), zip = await Z.loadAsync(buf);
     var presF = zip.file('ppt/presentation.xml');
@@ -119,7 +237,9 @@
       var f = zip.file(files[i]); if (!f) continue;
       var rf = zip.file(files[i].replace(/slides\/(slide\d+\.xml)$/, 'slides/_rels/$1.rels')), rel = {};
       if (rf) { var rx = await rf.async('string'), rr, re2 = /<Relationship\b[^>]*>/g; while ((rr = re2.exec(rx))) { var idm = rr[0].match(/Id="([^"]+)"/), tm = rr[0].match(/Target="([^"]+)"/); if (idm && tm && /^https?:|^mailto:/i.test(tm[1])) rel[idm[1]] = tm[1].replace(/&amp;/g, '&'); } }
-      pages.push(pptItems(await f.async('string'), CX, CY, rel));
+      var xml = await f.async('string'), its = pptItems(xml, CX, CY, rel);
+      try { its.lay = layoutOf(pptShapes(xml, CX, CY, rel)); } catch (e) { its.lay = null; }
+      pages.push(its);
     }
     return pages;
   }
@@ -423,7 +543,7 @@
       var big = items.filter(function (i) { return i.h >= 20; }).map(function (i) { return i.s.trim(); }).join(' ').trim();
 
       var kind = slideKind(items);
-      if (kind) { var ex = kind === 'tier' ? readTier(items) : kind === 'steps' ? readSteps(items) : readEksekusi(items); ex.slide = idx + 1; ex.links = slideLinks(items); extras.push(ex); return; }
+      if (kind) { var ex = kind === 'tier' ? readTier(items) : kind === 'steps' ? readSteps(items) : readEksekusi(items); ex.slide = idx + 1; ex.links = slideLinks(items); if (items.lay) ex.lay = items.lay; extras.push(ex); return; }
       if (/PETUNJUK\s+TEKNIS/i.test(txt) && !/SYARAT/i.test(U)) {
         var cv = txt.replace(/\s+/g, ' ').match(/Petunjuk\s+Teknis\s+Promo\s+([A-Za-z+& ]{3,20})/i);   // "Petunjuk Teknis Promo Tambahan"
         if (cv && !/^program/i.test(cv[1].trim()) && KNOWN.test(cv[1])) cat = catName(cv[1].trim());
@@ -448,7 +568,7 @@
         var m2 = readMemo(items, all); m2.slide = idx + 1; memos.push(m2);
         return;
       }
-      if (txt.trim() && !SKIP_RE.test(txt) && all.length >= 2) { var gx = readGeneric(items); gx.slide = idx + 1; gx.links = slideLinks(items); if (gx.title || (gx.cols || []).length || gx.table) { extras.push(gx); return; } }
+      if (txt.trim() && !SKIP_RE.test(txt) && all.length >= 2) { var gx = readGeneric(items); gx.slide = idx + 1; gx.links = slideLinks(items); if (items.lay) gx.lay = items.lay; if (gx.title || (gx.cols || []).length || gx.table) { extras.push(gx); return; } }
       if (txt.trim()) unknown.push({ slide: idx + 1, text: txt.slice(0, 500) });
     });
 
