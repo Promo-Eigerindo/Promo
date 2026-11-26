@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="app.css?v=16">
+<link rel="stylesheet" href="app.css?v=17">
 <style>
 /* ---------- kartu promo ---------- */
 .pcard{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;gap:7px;background:#fff;border:1px solid var(--line);
@@ -215,7 +215,7 @@ table.gt{border-collapse:separate;border-spacing:0;font-size:11px;width:100%;min
 .lvt td{padding:7px 10px;border-top:1px solid var(--line)}
 @media (min-width:960px){.ktiles{grid-template-columns:repeat(4,minmax(0,1fr))}.kt b{font-size:28px}}
 </style>
-<link rel="stylesheet" href="ppt.css?v=16">
+<link rel="stylesheet" href="ppt.css?v=17">
 </head>
 <body class="locked">
 
@@ -256,9 +256,9 @@ table.gt{border-collapse:separate;border-spacing:0;font-size:11px;width:100%;min
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script src="config.js"></script>
-<script src="icons.js?v=16"></script>
-<script src="artikel.js?v=16"></script>
-<script src="foto.js?v=16"></script>
+<script src="icons.js?v=17"></script>
+<script src="artikel.js?v=17"></script>
+<script src="foto.js?v=17"></script>
 <script>
 'use strict';
 var CFG = window.PROMO_CFG || {};
@@ -479,25 +479,26 @@ function liveHO(all) { return (App.online || []).filter(function (o) { return o.
 function liveSites() { return (App.online || []).filter(function (o) { return o.ago < 180 && o.kind === 'site'; }); }
 
 /* --------------------------------------------------------- navigasi - */
-var NAV = [['home', 'Beranda', 'home'], ['kalender', 'Kalender', 'cal'], ['jalan', 'Hari ini', 'zap'], ['memo', 'Memo', 'memo'], ['akun', 'Akun', 'user']];
+var NAV = [['home', 'Beranda', 'home'], ['kalender', 'Kalender', 'cal'], ['jalan', 'Hari ini', 'zap'], ['info', 'Info', 'info'], ['akun', 'Akun', 'user']];
 var SNAV = [['home', 'Beranda', 'home'], ['jalan', 'Promo hari ini', 'zap'], ['kalender', 'Kalender', 'cal'], ['semua', 'Semua promo', 'list'],
-            ['memo', 'Memo & update', 'memo'], ['artikel', 'List artikel', 'sheet'], ['cek', 'Cek stok promo', 'search'], ['akun', 'Siapa online', 'users']];
+            ['memo', 'Memo & update', 'memo'], ['info', 'Info tambahan', 'info'], ['artikel', 'List artikel', 'sheet'], ['cek', 'Cek stok promo', 'search'], ['akun', 'Siapa online', 'users']];
 function go(v, extra) {
   App.view = v; if (extra) Object.assign(App, extra);
   var h = '#' + v; if (location.hash !== h) history.pushState(null, '', h);
   render(); window.scrollTo(0, 0);
 }
-function readHash() { var v = (location.hash || '').slice(1); if (['home', 'jalan', 'kalender', 'semua', 'memo', 'artikel', 'cek', 'akun'].indexOf(v) >= 0) App.view = v; }
+function readHash() { var v = (location.hash || '').slice(1); if (['home', 'jalan', 'kalender', 'semua', 'memo', 'info', 'artikel', 'cek', 'akun'].indexOf(v) >= 0) App.view = v; }
 window.addEventListener('popstate', function () { closeDrawer(); readHash(); if (App.data) render(); });
 
 function renderChrome() {
-  var memoN = monthMemos().length, live = liveSites().length;
+  var memoN = monthMemos().length, live = liveSites().length, infoN = infoCount();
   $('#bnav').innerHTML = NAV.map(function (n) {
     if (n[0] === 'jalan') return '<button class="fab' + (App.view === 'jalan' ? ' on' : '') + '" data-go="jalan"><span class="d">' + svg('zap') + '</span><span>' + n[1] + '</span></button>';
-    return '<button data-go="' + n[0] + '" class="' + (App.view === n[0] ? 'on' : '') + '">' + svg(n[2]) + '<span>' + n[1] + '</span></button>';
+    var b = n[0] === 'info' && infoN ? '<span class="bd">' + infoN + '</span>' : '';
+    return '<button data-go="' + n[0] + '" class="' + (App.view === n[0] ? 'on' : '') + '">' + svg(n[2]) + '<span>' + n[1] + '</span>' + b + '</button>';
   }).join('');
   $('#snav').innerHTML = SNAV.map(function (n) {
-    var bd = n[0] === 'memo' && memoN ? '<span class="bd">' + memoN + '</span>' : n[0] === 'akun' && live ? '<span class="bd">' + live + '</span>' : '';
+    var bd = n[0] === 'memo' && memoN ? '<span class="bd">' + memoN + '</span>' : n[0] === 'akun' && live ? '<span class="bd">' + live + '</span>' : n[0] === 'info' && infoN ? '<span class="bd">' + infoN + '</span>' : '';
     return '<button data-go="' + n[0] + '" class="' + (App.view === n[0] ? 'on' : '') + '">' + svg(n[2]) + n[1] + bd + '</button>';
   }).join('');
   $('#sfoot').innerHTML = App.ho
@@ -505,7 +506,7 @@ function renderChrome() {
     : App.admin
     ? 'Masuk sebagai<b><span class="admtag">ADMIN</span>' + esc(App.site.name) + '</b><a class="btn sm block" href="admin.html" style="display:block;text-align:center;text-decoration:none;margin-top:10px">Buka halaman admin</a><button class="btn sm block" id="sOut">Keluar</button>'
     : 'Masuk sebagai<b>' + esc(App.site.code) + (App.site.name ? ' · ' + esc(App.site.name) : '') + '</b><button class="btn sm block" id="sOut">Keluar</button>';
-  var TT = { home: 'Beranda', jalan: 'Promo hari ini', kalender: 'Kalender promo', semua: 'Semua promo', memo: 'Memo & update', artikel: 'List artikel', cek: 'Cek stok promo', akun: 'Siapa online' };
+  var TT = { home: 'Beranda', jalan: 'Promo hari ini', kalender: 'Kalender promo', semua: 'Semua promo', memo: 'Memo & update', info: 'Info tambahan', artikel: 'List artikel', cek: 'Cek stok promo', akun: 'Siapa online' };
   $('#tbTitle').innerHTML = esc(TT[App.view] || 'Beranda') + '<small>' + (App.ho ? 'HO · ' + esc(App.site.name || '') : App.admin ? 'ADMIN · ' + esc(App.site.name || '') : esc(App.site.code + ' · ' + (App.site.name || ''))) + (App.month ? ' · Juknis ' + fmtMonth(App.month) : '') + '</small>';
   live += liveHO().length; $('#tbOnline').innerHTML = svg('users') + (live ? '<span class="bd">' + live + '</span>' : '');
   $('#tbOut').innerHTML = svg('out');
@@ -516,8 +517,8 @@ function render() {
   if (!App.data) return;
   document.title = CFG.BRAND || 'Promo Eigerindo';
   renderChrome();
-  var fn = { home: vHome, jalan: vJalan, kalender: vKalender, semua: vSemua, memo: vMemo, artikel: vArtikel, cek: vCek, akun: vAkun }[App.view] || vHome;
-  $('#view').innerHTML = fn() + slideFoot({ home: 'RINGKASAN', jalan: 'PROMO HARI INI', kalender: 'KALENDER PROMO', semua: 'SEMUA PROMO', memo: 'MEMO & UPDATE', artikel: 'LIST ARTIKEL', cek: 'CEK STOK PROMO', akun: 'TOKO ONLINE' }[App.view] || '');
+  var fn = { home: vHome, jalan: vJalan, kalender: vKalender, semua: vSemua, memo: vMemo, info: vInfo, artikel: vArtikel, cek: vCek, akun: vAkun }[App.view] || vHome;
+  $('#view').innerHTML = fn() + slideFoot({ home: 'RINGKASAN', jalan: 'PROMO HARI INI', kalender: 'KALENDER PROMO', semua: 'SEMUA PROMO', memo: 'MEMO & UPDATE', info: 'INFO TAMBAHAN', artikel: 'LIST ARTIKEL', cek: 'CEK STOK PROMO', akun: 'TOKO ONLINE' }[App.view] || '');
 }
 function slideFoot(sec) {
   return '<footer class="pfoot"><span>EIGER ADVENTURE &nbsp;|&nbsp; JUKNIS PROMO ' + esc(fmtMonth(App.month).toUpperCase()) + (sec ? ' &nbsp;|&nbsp; ' + esc(sec) : '') + '</span><img src="img/logo-white.png" alt="Eigerindo MPI"></footer>';
@@ -625,6 +626,28 @@ function vSemua() {
         var L = f.filter(function (p) { return p.cat === c; });
         return '<div class="pdiv" style="--c:' + colorOf(c) + '"><h2>Promo<span>' + esc(catLabel(c)) + '</span></h2><small>' + L.length + ' promo</small></div><div class="cards">' + L.map(promoCard).join('') + '</div>';
       }).join('') : '<div class="empty">Tidak ada promo yang cocok.</div>') + '</div></section>';
+}
+function infoCount() {
+  if (!App.data) return 0;
+  var B = App.data.bulan[App.month] || {};
+  return (B.info || []).length + monthPromos().filter(function (p) { return (p.extra || []).length; }).length;
+}
+function vInfo() {
+  var B = App.data.bulan[App.month] || {}, INF = B.info || [], XN = { tier: 'Detail tiering', eksekusi: 'Teknis eksekusi', steps: 'Alur langkah' };
+  var XI = { tier: 'list', eksekusi: 'clock', steps: 'zap' };
+  var withX = monthPromos().filter(function (p) { return (p.extra || []).length; });
+  var h = '<section class="sheet">' + head('Info tambahan', fmtMonth(App.month) + ' · slide detail dari juknis');
+  h += '<section class="panel"><div class="ph"><h2>Info umum</h2><span class="sub" style="margin-left:auto">' + INF.length + ' info</span></div>'
+    + (INF.length ? '<div class="xl">' + INF.map(function (e, k) {
+        return '<button class="xb" data-info="' + k + '"><span class="x" style="background:var(--orange-tint);color:var(--orange-2)">' + svg('info') + '</span><span><b>' + esc(e.title || 'Info tambahan') + '</b><small>' + esc(e.sub || e.lead || 'berlaku untuk semua promo') + '</small></span><span class="go">' + svg('next') + '</span></button>';
+      }).join('') + '</div>' : '<div class="empty">Tidak ada info umum bulan ini.</div>') + '</section>';
+  h += '<section class="panel"><div class="ph"><h2>Detail per promo</h2><span class="sub" style="margin-left:auto">' + withX.length + ' promo</span></div>'
+    + (withX.length ? '<div class="xl">' + withX.map(function (p) {
+        var c = colorOf(p.cat);
+        return '<button class="xb" data-p="' + esc(p.id) + '"><span class="x" style="background:' + c + ';color:#fff">' + svg(XI[(p.extra[0] || {}).type] || 'file') + '</span><span><b>' + esc(p.title) + '</b><small>' + esc(catLabel(p.cat)) + ' · '
+          + p.extra.map(function (e) { return esc(e.title || XN[e.type] || 'Info tambahan'); }).join(' · ') + (isHeld(p) ? ' · ⛔ ditahan' : '') + '</small></span><span class="go">' + svg('next') + '</span></button>';
+      }).join('') + '</div>' : '<div class="empty">Tidak ada promo dengan slide detail bulan ini.</div>') + '</section>';
+  return h + '</section>';
 }
 function vMemo() {
   var m = monthMemos(), B = App.data.bulan[App.month] || {};
