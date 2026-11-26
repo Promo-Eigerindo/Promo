@@ -235,3 +235,10 @@ body.lb-open{overflow:hidden}
 /* badge jumlah di footer HP */
 .bnav button{position:relative}
 .bnav button .bd{position:absolute;top:2px;left:calc(50% + 6px);min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--orange,#E8500A);color:#fff;font-size:10px;font-weight:800;display:grid;place-items:center;line-height:1}
+
+/* jumlah online di header (pil hijau) */
+.onl{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 13px 0 11px;border-radius:999px;border:1px solid #BFE8CC;background:#E8F8EE;color:#0B4F2C;font-family:inherit;font-weight:800;font-size:13.5px;line-height:1;cursor:pointer;white-space:nowrap;flex:none}
+.onl .dot{width:11px;height:11px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#7BE8A0,#16A34A 70%);box-shadow:0 0 0 0 rgba(22,163,74,.5);animation:onlp 2s infinite}
+.onl:hover{background:#DDF5E6}
+@keyframes onlp{0%{box-shadow:0 0 0 0 rgba(22,163,74,.45)}70%{box-shadow:0 0 0 6px rgba(22,163,74,0)}100%{box-shadow:0 0 0 0 rgba(22,163,74,0)}}
+@media (prefers-reduced-motion:reduce){.onl .dot{animation:none}}
