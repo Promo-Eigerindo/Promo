@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="app.css?v=17">
+<link rel="stylesheet" href="app.css?v=18">
 <style>
 /* ---------- khusus halaman admin ---------- */
 .card{background:#fff;border-radius:20px;padding:18px 16px;margin-top:12px;box-shadow:0 4px 18px rgba(11,27,74,.06)}
@@ -62,7 +62,7 @@ textarea.inp{min-height:80px;resize:vertical}
 .btn.warnb{color:var(--orange-2);border-color:#F3C3A8}
 .btn.warnb:hover{background:var(--orange-tint);border-color:var(--orange)}
 </style>
-<link rel="stylesheet" href="ppt.css?v=17">
+<link rel="stylesheet" href="ppt.css?v=18">
 </head>
 <body class="locked">
 
@@ -78,7 +78,7 @@ textarea.inp{min-height:80px;resize:vertical}
     <div class="err" id="aErr"></div>
     <button type="button" class="btn sm" id="aTest" style="margin-top:4px">Tes koneksi server</button>
     <div class="small muted" id="aTestOut" style="margin-top:8px;line-height:1.5"></div>
-    <div class="small muted" style="margin-top:10px">Versi halaman: 17</div>
+    <div class="small muted" style="margin-top:10px">Versi halaman: 18</div>
   </form>
 </div>
 
@@ -103,10 +103,11 @@ textarea.inp{min-height:80px;resize:vertical}
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script src="config.js"></script>
-<script src="icons.js?v=17"></script>
-<script src="parse.js?v=17"></script>
-<script src="artikel.js?v=17"></script>
-<script src="foto.js?v=17"></script>
+<script src="icons.js?v=18"></script>
+<script src="parse.js?v=18"></script>
+<script src="slide.js?v=18"></script>
+<script src="artikel.js?v=18"></script>
+<script src="foto.js?v=18"></script>
 <script>
 'use strict';
 var CFG = window.PROMO_CFG || {};
@@ -692,6 +693,18 @@ function publish() {
     var q = Object.assign({}, p); q.extra = (p.extra || []).concat(X.filter(function (x) { return x.target === p; }).map(function (x) { return x.ex; })); return q;
   });
   var metaOut = Object.assign({}, A.W.meta, { info: (A.W.meta.info || []).concat(X.filter(function (x) { return x.target === 'umum'; }).map(function (x) { return x.ex; })) });
+  /* batas 1 sel Google Sheets = 50.000 huruf: bila tampilan slide terlalu besar, pakai tampilan ringkas */
+  var cut = 0, fit = function (arr) {
+    arr = arr.map(function (x) { return Object.assign({}, x); });
+    while (JSON.stringify(arr).length > 45000) {
+      var big = arr.filter(function (x) { return x.lay; }).sort(function (a, b) { return JSON.stringify(b.lay).length - JSON.stringify(a.lay).length; })[0];
+      if (!big) break; delete big.lay; cut++;
+    }
+    return arr;
+  };
+  promosOut.forEach(function (q) { q.extra = fit(q.extra); });
+  metaOut.info = fit(metaOut.info);
+  if (cut) toast(cut + ' slide terlalu besar, jadi tampil dalam versi ringkas.', 6000);
   post({ a: 'save', month: A.W.month, meta: metaOut, promos: promosOut, memos: A.W.memos })
     .then(function (r) { A.data = normData(r.data); A.W = null; A.tab = 'promo'; history.replaceState(null, '', '#promo'); A.pm = r.data.months[r.data.months.length - 1]; render(); toast('Terbit. Toko sudah bisa melihatnya.'); })
     .catch(function (e) { toast('Gagal menerbitkan: ' + (e.message || e.code), 6000); });
@@ -1058,15 +1071,16 @@ function extrasCard(W) {
 function exPreview(e) {
   var h = '<div class="ov" id="ov"><div class="drawer"><div class="grab"></div><button class="btn sm" data-close style="float:right">Tutup</button><h2>' + esc(e.title || XT[e.type]) + '</h2>'
     + (e.sub ? '<p class="small muted" style="margin:-8px 0 6px">' + esc(e.sub) + '</p>' : '') + (e.lead ? '<p class="small" style="font-weight:700;color:var(--orange-2)">' + esc(e.lead) + '</p>' : '');
-  if (e.type === 'tier') h += (e.tiers || []).map(function (t) { return '<div class="fs"><h4>' + esc(t.label) + '</h4>' + t.lines.map(function (l) { return l.big ? '<div style="font-size:22px;font-weight:800">' + esc(l.t) + '</div>' : '<div class="small">' + esc(l.t) + '</div>'; }).join('') + '</div>'; }).join('');
+  if (e.lay && window.SlideView) h += SlideView.html(e.lay);
+  else if (e.type === 'tier') h += (e.tiers || []).map(function (t) { return '<div class="fs"><h4>' + esc(t.label) + '</h4>' + t.lines.map(function (l) { return l.big ? '<div style="font-size:22px;font-weight:800">' + esc(l.t) + '</div>' : '<div class="small">' + esc(l.t) + '</div>'; }).join('') + '</div>'; }).join('');
   else if (e.type === 'eksekusi') h += (e.days || []).map(function (d) { return '<div class="fs"><h4>' + esc(d.n + '. ' + d.day) + ' <span class="muted">' + esc(d.sub) + '</span></h4>' + d.items.map(function (it) { return '<div class="small" style="margin:4px 0"><b>' + esc(it.tag) + '</b> ' + esc(it.text) + '</div>'; }).join('') + '</div>'; }).join('');
   else if (e.type === 'steps') h += (e.steps || []).map(function (st) { return '<div class="fs"><h4>' + esc(st.n + '. ' + st.title) + '</h4><div class="small">' + esc(st.text) + '</div></div>'; }).join('') + (e.links || []).map(function (l) { return '<div class="small">🔗 <a href="' + esc(l.u) + '" target="_blank" rel="noopener">' + esc(l.t) + '</a></div>'; }).join('');
   else {
     if (e.table) h += '<div class="tbl-wrap" style="max-height:none;margin-bottom:12px"><table class="tbl">' + e.table.map(function (r, i) { return '<tr>' + r.map(function (c) { return i ? '<td>' + esc(c) + '</td>' : '<th>' + esc(c) + '</th>'; }).join('') + '</tr>'; }).join('') + '</table></div>';
     h += (e.cols || []).map(function (c) { return '<div class="fs">' + c.map(function (l) { return '<div' + (l.big ? ' style="font-weight:800"' : ' class="small"') + '>' + esc(l.t) + '</div>'; }).join('') + '</div>'; }).join('');
   }
-  h += (e.notes || []).map(function (n) { return '<div class="note"><b>' + esc(n.label) + (n.label ? ':' : '') + '</b> ' + esc(n.text) + '</div>'; }).join('');
-  h += '<p class="small muted" style="margin-top:14px">Di halaman toko, isi ini tampil rapi mengikuti gaya slide juknis.</p></div></div>';
+  if (!e.lay) h += (e.notes || []).map(function (n) { return '<div class="note"><b>' + esc(n.label) + (n.label ? ':' : '') + '</b> ' + esc(n.text) + '</div>'; }).join('');
+  h += '<p class="small muted" style="margin-top:14px">' + (e.lay ? 'Tampilan ini sama dengan yang dilihat toko (di HP disusun ke bawah).' : 'Di halaman toko, isi ini tampil rapi mengikuti gaya slide juknis.') + '</p></div></div>';
   var d = document.createElement('div'); d.innerHTML = h; document.body.appendChild(d.firstChild);
 }
 document.addEventListener('change', function (e) {
