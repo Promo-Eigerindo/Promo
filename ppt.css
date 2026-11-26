@@ -348,3 +348,53 @@ body{font-size:14.5px}
 .xnote.warn{background:#F4EEF1}
 .xnote.warn b{color:var(--c)}
 .xnote .xw1{color:var(--c)}
+
+/* ---------------------------------------------------- slide "seperti PPT" (slide.js) */
+.slv{padding:12px 14px 14px}
+.sla{container-type:inline-size;position:relative;width:100%;background:#F8FAFC;border-radius:4px;overflow:hidden}
+.sla-in{position:absolute;inset:0}
+.sla .sh{position:absolute;box-sizing:border-box;display:flex;flex-direction:column;overflow:visible;line-height:1.2;color:#000;font-family:Arial,"Helvetica Neue",Helvetica,sans-serif}
+.sla .tx p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.slf{display:none;font-family:Arial,"Helvetica Neue",Helvetica,sans-serif;color:#1E293B}
+.slf .tx p{margin:0 0 2px;line-height:1.4;white-space:pre-wrap;overflow-wrap:anywhere}
+.slf .tx p:last-child{margin-bottom:0}
+.slf .fn{margin:0 0 8px;min-width:0}
+.slf .fn:last-child{margin-bottom:0}
+.slf .fn-box{padding:10px 12px}
+.slf .fn-mid{display:flex;flex-direction:column;justify-content:center}
+.slf .fn-e{border-radius:50%;display:flex;align-items:center;justify-content:center;padding:0;flex:none;text-align:center}
+.slf .fn-e .tx p{line-height:1}
+.slf .fn-a{width:12px;height:14px;clip-path:polygon(0 0,100% 50%,0 100%);margin:auto;flex:none}
+.slf .fr.v>.fn-a{transform:rotate(90deg);margin:-2px auto 6px}
+.slf .fr.h>.fc>.fn-a{margin-top:40px}
+.slf .fn-bar{height:3px;border-radius:2px;margin:-4px 0 10px}
+.slf .fn-dot{width:5px;border-radius:2px;flex:none}
+.slf .fn-l{margin:6px 0 10px}
+.slf .fn-lbl{display:block;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#64748B;margin-bottom:1px}
+.slf .fr{display:flex;gap:8px;margin:0 0 8px}
+.slf .fr:last-child{margin-bottom:0}
+.slf .fr.h{align-items:flex-start}
+.slf .fr.v{flex-direction:column;gap:0}
+.slf .fr.v>.fn{margin-bottom:8px}
+.slf .fr.v>.fn:last-child{margin-bottom:0}
+.slf .fc{min-width:0}
+.slf .fr.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end}
+.slf .fc>.fn{margin:0 0 4px}
+.slf .fc>.fn:last-child{margin-bottom:0}
+.slf .fc.sm .fn-box{padding:3px 8px;white-space:nowrap}
+.sl-tg{display:none;margin:12px auto 0;background:none;border:1px solid var(--line,#E2E8F0);border-radius:999px;padding:7px 14px;font:600 12.5px/1 inherit;color:var(--brand,#073763);cursor:pointer}
+@media (max-width:759px){
+  .slv>.sla{display:none}
+  .slv>.slf{display:block}
+  .sl-tg{display:block}
+  .slv.asli>.sla{display:block;min-width:640px}
+  .slv.asli{overflow-x:auto}
+  .slv.asli>.slf{display:none}
+}
+
+.sla table.slt{width:100%;border-collapse:collapse;table-layout:fixed}
+.sla table.slt td{border:.1cqw solid;padding:.5cqw .75cqw;line-height:1.2}
+.sla table.slt p{margin:0}
+.slf .fnt{overflow-x:auto;border:1px solid #E2E8F0;border-radius:6px}
+.slf table.slt-m{width:100%;border-collapse:collapse}
+.slf table.slt-m td{border:1px solid #E2E8F0;padding:8px 10px}
