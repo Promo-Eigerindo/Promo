@@ -412,7 +412,7 @@ function doLogout() {
 function boot() {
   $('#view').innerHTML = '<div class="loading"><span class="spin"></span>Memuat promo…</div>';
   api('boot').then(function (r) {
-    App.site = r.site; App.admin = !!r.admin; App.ho = !!r.ho; App.data = normData(r.data); App.online = r.online || []; App.today = r.serverDate || todayISO();
+    App.site = r.site; App.admin = !!r.admin; App.ho = !!r.ho; App.data = normData(r.data); App.online = r.online || []; App.today = r.serverDate || todayISO(); App.rev = r.rev || ''; App.loadedAt = Date.now();
     if (!App.month || r.data.months.indexOf(App.month) < 0) App.month = pickMonth(r.data.months);
     readHash(); render(); startPing();
   }).catch(function (e) {
@@ -865,13 +865,59 @@ function closeDrawer() { var o = $('#ov'); if (o) { o.remove(); document.body.st
 
 /* ------------------------------------------------------------ ping -- */
 var pingT = null;
-function startPing() { stopPing(); pingT = setInterval(ping, 60000); }
+function startPing() { stopPing(); pingT = setInterval(ping, 45000); }
 function stopPing() { if (pingT) clearInterval(pingT); pingT = null; }
 function ping() {
   if (!App.token || document.visibilityState !== 'visible') return;
-  api('ping', { page: App.view }).then(function (r) { App.online = r.online || []; renderChrome(); if (App.view === 'akun' && !$('#ov')) render(); }).catch(function () {});
+  api('ping', { page: App.view }).then(function (r) {
+    App.online = r.online || []; renderChrome(); if (App.view === 'akun' && !$('#ov')) render();
+    var berubah = r.rev && App.rev && r.rev !== App.rev, lama = Date.now() - (App.loadedAt || 0) > (r.rev ? 15 : 5) * 60000;   // backend lama (tanpa rev): muat ulang tiap 5 menit
+    var gantiHari = r.serverDate && r.serverDate !== App.today;
+    if (berubah || lama || gantiHari) refreshData(!!berubah);
+  }).catch(function () {});
 }
 document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') ping(); });
+
+/* ------------------------------------------- muat ulang data otomatis --- */
+var refreshing = false;
+function promoSig(p) { return [p.title, JSON.stringify(p.ranges), p.periode, p.ket && p.ket.join ? p.ket.join('|') : p.ket, p.updatedAt, isHeld(p) ? 1 : 0, JSON.stringify(p.extra || []).length].join('~'); }
+function diffTxt(oldD, newD) {
+  var O = {}, N = {}, baru = 0, hapus = 0, ubah = 0, tahan = 0, lanjut = 0, memo = (newD.memos || []).length - (oldD.memos || []).length;
+  (oldD.promos || []).forEach(function (p) { O[p.id] = p; });
+  (newD.promos || []).forEach(function (p) {
+    N[p.id] = 1; var o = O[p.id];
+    if (!o) baru++;
+    else if (isHeld(p) !== isHeld(o)) { if (isHeld(p)) tahan++; else lanjut++; }
+    else if (promoSig(p) !== promoSig(o)) ubah++;
+  });
+  Object.keys(O).forEach(function (id) { if (!N[id]) hapus++; });
+  var t = [];
+  if (baru) t.push(baru + ' promo baru'); if (ubah) t.push(ubah + ' promo diperbarui'); if (tahan) t.push(tahan + ' promo ditahan');
+  if (lanjut) t.push(lanjut + ' promo dilanjutkan'); if (hapus) t.push(hapus + ' promo dihapus'); if (memo > 0) t.push(memo + ' memo baru');
+  return t.join(' · ');
+}
+function busy() {                                            // jangan ganggu saat toko sedang mengetik / membuka detail
+  var a = document.activeElement;
+  return !!$('#ov') || document.body.classList.contains('lb-open') || (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
+}
+function refreshData(beritahu) {
+  if (refreshing || !App.token) return;
+  refreshing = true;
+  api('boot').then(function (r) {
+    var oldD = App.data, d = normData(r.data), msg = beritahu ? diffTxt(oldD, d) : '';
+    App.data = d; App.online = r.online || App.online; App.today = r.serverDate || App.today; App.rev = r.rev || App.rev; App.loadedAt = Date.now();
+    App.admin = !!r.admin; App.ho = !!r.ho; App.site = r.site || App.site;
+    if (!App.month || d.months.indexOf(App.month) < 0) App.month = pickMonth(d.months);
+    App.needRender = true; applyRefresh();
+    if (beritahu) toast('🔄 Info promo diperbarui' + (msg ? ': ' + msg : ''), 6000);
+  }).catch(function () {}).then(function () { refreshing = false; });
+}
+function applyRefresh() {
+  if (!App.needRender) return;
+  if (busy()) { setTimeout(applyRefresh, 4000); return; }
+  App.needRender = false;
+  var y = window.scrollY; render(); window.scrollTo(0, y);
+}
 
 /* ---------------------------------------------------------- event --- */
 document.addEventListener('click', function (e) {
