@@ -258,7 +258,7 @@ table.gt{border-collapse:separate;border-spacing:0;font-size:11px;width:100%;min
 <script src="config.js"></script>
 <script src="icons.js?v=18"></script>
 <script src="slide.js?v=18"></script>
-<script src="artikel.js?v=18"></script>
+<script src="artikel.js?v=19"></script>
 <script src="foto.js?v=18"></script>
 <script>
 'use strict';
@@ -944,7 +944,9 @@ function vCek() {
     + '<div class="kt ok"><span>Pcs terdisplay</span><b>' + R.tot.disp.toLocaleString('id-ID') + '</b><small>Sales Area & POS</small></div>'
     + '<div class="kt"><span>Pcs di gudang</span><b>' + R.tot.wh.toLocaleString('id-ID') + '</b><small>Warehouse</small></div>'
     + '<div class="kt warn"><span>SKU belum display</span><b>' + R.tot.belum.toLocaleString('id-ID') + '</b><small>ada di gudang, 0 di display</small></div></div>'
-    + '<button class="btn primary block" data-cek="export" style="margin-top:12px">' + svg('download').replace('<svg ', '<svg style="width:18px;height:18px;vertical-align:-4px;margin-right:6px" ') + 'Export hasil ke Excel</button>'
+    + '<button class="btn primary block" data-cek="print" style="margin-top:12px">' + svg('download').replace('<svg ', '<svg style="width:18px;height:18px;vertical-align:-4px;margin-right:6px" ') + 'Export siap print A4 (per promo)</button>'
+    + '<div class="small muted" style="margin-top:6px;text-align:center">Kolom: lokasi bin, qty stock, harga awal, diskon, harga setelah diskon · 1 sheet per promo</div>'
+    + '<button class="btn block" data-cek="export" style="margin-top:8px">Export data lengkap (analisa)</button>'
     + '<div class="cwrap" style="margin-top:14px"><table class="ctbl"><thead><tr><th>List</th><th class="r">Artikel</th><th class="r">SKU ada</th><th class="r">Display</th><th class="r">Gudang</th><th class="r">Belum display</th><th class="r">Tanpa stok</th></tr></thead><tbody>'
     + R.per.map(function (p, i) { return '<tr class="lk" data-cek="li:' + i + '"><td><b>' + esc(p.name) + '</b>' + (p.promoId ? '<div class="small muted">' + esc(promoTitle(p.promoId)) + '</div>' : '') + '</td><td class="r">' + p.listN + '</td><td class="r">' + p.sku + '</td><td class="r">' + p.disp + '</td><td class="r">' + p.wh + '</td><td class="r" style="color:' + (p.belum ? 'var(--orange-2)' : 'inherit') + ';font-weight:700">' + p.belum + '</td><td class="r">' + p.kosong + '</td></tr>'; }).join('')
     + '</tbody></table></div><p class="small muted" style="margin:8px 0 0">"Tanpa stok" = kode di list yang tidak ditemukan di stok toko. Daftarnya ada di file Export Excel.</p></section>';
@@ -1001,6 +1003,13 @@ document.addEventListener('click', function (e) {
   if (dl) { window.Artikel.needXLSX().then(function () { if (App._lv) window.Artikel.exportList([App._lv], App.month); }); return; }
   var c = t.closest && t.closest('[data-cek]'); if (!c || !App.cek) return;
   var k = c.dataset.cek, F = App.cekF, y = window.scrollY;
+  if (k === 'print') {
+    var C0 = App.cek; toast('Menyiapkan file print…', 6000);
+    window.Artikel.exportPrint(C0.R, C0.stock, C0.lists, { site: App.site.code + ' ' + (App.site.name || ''), monthLabel: fmtMonth(C0.month), month: C0.month, file: C0.file,
+      promoOf: function (id) { var p = (App.data.promos || []).filter(function (q) { return q.id === id; })[0]; return p ? { title: p.title, periode: p.periode || rangeTxt(p.ranges), cat: p.cat } : null; } })
+      .then(function (fn) { toast('Tersimpan: ' + fn); }).catch(function (e) { toast(e.message || 'Gagal membuat file.', 6000); });
+    return;
+  }
   if (k === 'export') { window.Artikel.needXLSX().then(function () { var C = App.cek; var fn = window.Artikel.exportResult(C.R, C.stock, C.lists, { site: App.site.code + ' ' + (App.site.name || ''), monthLabel: fmtMonth(C.month), month: C.month, file: C.file, at: C.at }); toast('Tersimpan: ' + fn); }); return; }
   if (k === 'more') F.more = 1;
   else if (k.indexOf('view:') === 0) { F.view = k.slice(5); F.more = 0; }
