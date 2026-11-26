@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="app.css?v=18">
+<link rel="stylesheet" href="app.css?v=19">
 <style>
 /* ---------- khusus halaman admin ---------- */
 .card{background:#fff;border-radius:20px;padding:18px 16px;margin-top:12px;box-shadow:0 4px 18px rgba(11,27,74,.06)}
@@ -78,7 +78,7 @@ textarea.inp{min-height:80px;resize:vertical}
     <div class="err" id="aErr"></div>
     <button type="button" class="btn sm" id="aTest" style="margin-top:4px">Tes koneksi server</button>
     <div class="small muted" id="aTestOut" style="margin-top:8px;line-height:1.5"></div>
-    <div class="small muted" style="margin-top:10px">Versi halaman: 18</div>
+    <div class="small muted" style="margin-top:10px">Versi halaman: 19</div>
   </form>
 </div>
 
@@ -93,7 +93,7 @@ textarea.inp{min-height:80px;resize:vertical}
   <span class="ttl" id="tbTitle"></span>
   <span class="sp"></span>
   <button class="ibtn" id="reload" title="Muat ulang"></button>
-  <button class="ibtn" id="tbOnline" title="Toko & HO online"></button>
+  <button class="onl" id="tbOnline" title="Toko & HO online"></button>
   <button class="ibtn" id="out" title="Keluar"></button>
 </header>
 
@@ -241,7 +241,7 @@ function renderChrome() {
   }).join('') + '<button data-tile="site">' + svg('ext') + 'Buka halaman toko</button>';
   $('#sfoot').innerHTML = 'Admin<b>' + esc((A.me && A.me.name) || 'Admin') + '</b><button class="btn sm block" id="out2">Keluar</button>';
   $('#tbTitle').innerHTML = (A.tab === 'home' || !TITLES[A.tab] ? 'Beranda' : TITLES[A.tab][0]) + '<small>Admin · ' + esc((A.me && A.me.name) || '') + '</small>';
-  $('#tbOnline').innerHTML = svg('users') + (live ? '<span class="bd">' + live + '</span>' : '');
+  $('#tbOnline').innerHTML = '<span class="dot"></span>' + live + ' online';
   $('#out').innerHTML = svg('out');
   $('#reload').innerHTML = svg('refresh');
 }
