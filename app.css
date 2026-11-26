@@ -232,3 +232,6 @@ body.lb-open{overflow:hidden}
   .lb-hint{display:none}
   .lb-img{transition:transform .05s linear}
 }
+/* badge jumlah di footer HP */
+.bnav button{position:relative}
+.bnav button .bd{position:absolute;top:2px;left:calc(50% + 6px);min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--orange,#E8500A);color:#fff;font-size:10px;font-weight:800;display:grid;place-items:center;line-height:1}
