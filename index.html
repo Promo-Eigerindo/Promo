@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="app.css?v=18">
+<link rel="stylesheet" href="app.css?v=19">
 <style>
 /* ---------- kartu promo ---------- */
 .pcard{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;gap:7px;background:#fff;border:1px solid var(--line);
@@ -246,7 +246,7 @@ table.gt{border-collapse:separate;border-spacing:0;font-size:11px;width:100%;min
   <img class="logo" src="img/logo-white.png" alt="Eigerindo MPI">
   <span class="ttl" id="tbTitle"></span>
   <span class="sp"></span>
-  <button class="ibtn" id="tbOnline" title="Siapa online"></button>
+  <button class="onl" id="tbOnline" title="Siapa yang sedang online"></button>
   <button class="ibtn" id="tbOut" title="Keluar"></button>
 </header>
 
@@ -480,9 +480,9 @@ function liveHO(all) { return (App.online || []).filter(function (o) { return o.
 function liveSites() { return (App.online || []).filter(function (o) { return o.ago < 180 && o.kind === 'site'; }); }
 
 /* --------------------------------------------------------- navigasi - */
-var NAV = [['home', 'Beranda', 'home'], ['kalender', 'Kalender', 'cal'], ['jalan', 'Hari ini', 'zap'], ['info', 'Info', 'info'], ['akun', 'Akun', 'user']];
+var NAV = [['home', 'Beranda', 'home'], ['kalender', 'Kalender', 'cal'], ['jalan', 'Hari ini', 'zap'], ['info', 'Info', 'info'], ['artikel', 'Check artikel', 'sheet']];
 var SNAV = [['home', 'Beranda', 'home'], ['jalan', 'Promo hari ini', 'zap'], ['kalender', 'Kalender', 'cal'], ['semua', 'Semua promo', 'list'],
-            ['memo', 'Memo & update', 'memo'], ['info', 'Info tambahan', 'info'], ['artikel', 'List artikel', 'sheet'], ['cek', 'Cek stok promo', 'search'], ['akun', 'Siapa online', 'users']];
+            ['memo', 'Memo & update', 'memo'], ['info', 'Info tambahan', 'info'], ['artikel', 'Check artikel promo', 'sheet'], ['cek', 'Cek stok promo', 'search']];
 function go(v, extra) {
   App.view = v; if (extra) Object.assign(App, extra);
   var h = '#' + v; if (location.hash !== h) history.pushState(null, '', h);
@@ -507,9 +507,10 @@ function renderChrome() {
     : App.admin
     ? 'Masuk sebagai<b><span class="admtag">ADMIN</span>' + esc(App.site.name) + '</b><a class="btn sm block" href="admin.html" style="display:block;text-align:center;text-decoration:none;margin-top:10px">Buka halaman admin</a><button class="btn sm block" id="sOut">Keluar</button>'
     : 'Masuk sebagai<b>' + esc(App.site.code) + (App.site.name ? ' · ' + esc(App.site.name) : '') + '</b><button class="btn sm block" id="sOut">Keluar</button>';
-  var TT = { home: 'Beranda', jalan: 'Promo hari ini', kalender: 'Kalender promo', semua: 'Semua promo', memo: 'Memo & update', info: 'Info tambahan', artikel: 'List artikel', cek: 'Cek stok promo', akun: 'Siapa online' };
+  var TT = { home: 'Beranda', jalan: 'Promo hari ini', kalender: 'Kalender promo', semua: 'Semua promo', memo: 'Memo & update', info: 'Info tambahan', artikel: 'Check artikel promo', cek: 'Cek stok promo', akun: 'Siapa online' };
   $('#tbTitle').innerHTML = esc(TT[App.view] || 'Beranda') + '<small>' + (App.ho ? 'HO · ' + esc(App.site.name || '') : App.admin ? 'ADMIN · ' + esc(App.site.name || '') : esc(App.site.code + ' · ' + (App.site.name || ''))) + (App.month ? ' · Juknis ' + fmtMonth(App.month) : '') + '</small>';
-  live += liveHO().length; $('#tbOnline').innerHTML = svg('users') + (live ? '<span class="bd">' + live + '</span>' : '');
+  var onl = live + liveHO().length + (App.online || []).filter(function (o) { return o.kind === 'admin' && o.ago < 180 && !(App.admin && o.name === App.site.name); }).length;
+  $('#tbOnline').innerHTML = '<span class="dot"></span>' + onl + ' online';
   $('#tbOut').innerHTML = svg('out');
 }
 
@@ -519,7 +520,7 @@ function render() {
   document.title = CFG.BRAND || 'Promo Eigerindo';
   renderChrome();
   var fn = { home: vHome, jalan: vJalan, kalender: vKalender, semua: vSemua, memo: vMemo, info: vInfo, artikel: vArtikel, cek: vCek, akun: vAkun }[App.view] || vHome;
-  $('#view').innerHTML = fn() + slideFoot({ home: 'RINGKASAN', jalan: 'PROMO HARI INI', kalender: 'KALENDER PROMO', semua: 'SEMUA PROMO', memo: 'MEMO & UPDATE', info: 'INFO TAMBAHAN', artikel: 'LIST ARTIKEL', cek: 'CEK STOK PROMO', akun: 'TOKO ONLINE' }[App.view] || '');
+  $('#view').innerHTML = fn() + slideFoot({ home: 'RINGKASAN', jalan: 'PROMO HARI INI', kalender: 'KALENDER PROMO', semua: 'SEMUA PROMO', memo: 'MEMO & UPDATE', info: 'INFO TAMBAHAN', artikel: 'CHECK ARTIKEL PROMO', cek: 'CEK STOK PROMO', akun: 'TOKO ONLINE' }[App.view] || '');
 }
 function slideFoot(sec) {
   return '<footer class="pfoot"><span>EIGER ADVENTURE &nbsp;|&nbsp; JUKNIS PROMO ' + esc(fmtMonth(App.month).toUpperCase()) + (sec ? ' &nbsp;|&nbsp; ' + esc(sec) : '') + '</span><img src="img/logo-white.png" alt="Eigerindo MPI"></footer>';
@@ -546,10 +547,10 @@ function vHome() {
     ['kalender', 'Kalender', 'cal', '#073763', '#EAF0F7', 0],
     ['semua', 'Semua promo', 'list', '#1E40AF', '#E8EDFB', 0],
     ['cek', 'Cek stok promo', 'search', '#E8500A', '#FDEFE7', 0],
-    ['artikel', 'List artikel', 'sheet', '#107C41', '#E7F4EC', 0],
+    ['artikel', 'Check artikel promo', 'sheet', '#107C41', '#E7F4EC', 0],
     ['memo', 'Memo & update', 'memo', '#AD1457', '#FBE7EF', memos.length],
     [B.fileJuknis ? 'pdf' : 'nopdf', 'Juknis PDF', 'file', '#D32F2F', '#FDECEC', 0],
-    ['akun', 'Siapa online', 'users', '#6A1B9A', '#F3E8FA', live + liveHO().length]
+    ['info', 'Info tambahan', 'info', '#6A1B9A', '#F3E8FA', infoCount()]
   ];
   App._tiles = tiles;
   var h = '<section class="cov"><img class="lg" src="img/logo-white.png" alt="Eigerindo MPI"><h1>Petunjuk Teknis<span>Program Promo</span></h1><div class="ln"></div>'
@@ -660,7 +661,7 @@ function vArtikel() {
   var rows = [], B = App.data.bulan[App.month] || {};
   monthPromos().forEach(function (p) { (p.excel || []).forEach(function (x) { rows.push({ p: p, x: x }); }); });
   var AL = (B.artikel && B.artikel.lists) || [];
-  return '<section class="sheet">' + head('List artikel promo', fmtMonth(App.month) + ' · ' + (AL.length + rows.length) + ' list')
+  return '<section class="sheet">' + head('Check artikel promo', fmtMonth(App.month) + ' · ' + (AL.length + rows.length) + ' list')
     + (AL.length ? '<div class="xl" style="margin-bottom:12px">' + AL.map(function (l, i) { return listBtn(l, i); }).join('') + '</div>'
       + '<button class="btn orange block" data-go="cek" style="margin-bottom:14px">' + 'Cek stok toko saya terhadap list ini' + '</button>' : '')
     + '<div class="xl">'
