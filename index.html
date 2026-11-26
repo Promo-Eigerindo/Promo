@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="app.css?v=17">
+<link rel="stylesheet" href="app.css?v=18">
 <style>
 /* ---------- kartu promo ---------- */
 .pcard{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;gap:7px;background:#fff;border:1px solid var(--line);
@@ -215,7 +215,7 @@ table.gt{border-collapse:separate;border-spacing:0;font-size:11px;width:100%;min
 .lvt td{padding:7px 10px;border-top:1px solid var(--line)}
 @media (min-width:960px){.ktiles{grid-template-columns:repeat(4,minmax(0,1fr))}.kt b{font-size:28px}}
 </style>
-<link rel="stylesheet" href="ppt.css?v=17">
+<link rel="stylesheet" href="ppt.css?v=18">
 </head>
 <body class="locked">
 
@@ -256,9 +256,10 @@ table.gt{border-collapse:separate;border-spacing:0;font-size:11px;width:100%;min
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script src="config.js"></script>
-<script src="icons.js?v=17"></script>
-<script src="artikel.js?v=17"></script>
-<script src="foto.js?v=17"></script>
+<script src="icons.js?v=18"></script>
+<script src="slide.js?v=18"></script>
+<script src="artikel.js?v=18"></script>
+<script src="foto.js?v=18"></script>
 <script>
 'use strict';
 var CFG = window.PROMO_CFG || {};
@@ -1183,7 +1184,8 @@ function noteBoxes(notes, links) {
 function extrasHtml(p) {
   return (p.extra || []).map(function (e) {
     var head = '<div class="xh"><h3>' + esc(e.title || ({ tier: 'Detail tiering', eksekusi: 'Teknis eksekusi', steps: 'Alur langkah' })[e.type] || 'Info tambahan') + '</h3>' + (e.sub ? '<span>' + esc(e.sub) + '</span>' : '') + '</div>'
-      + (e.lead ? '<p class="xlead">' + esc(e.lead) + '</p>' : '');
+      + (e.lay && window.SlideView ? '' : e.lead ? '<p class="xlead">' + esc(e.lead) + '</p>' : '');
+    if (e.lay && window.SlideView) return '<section class="xsl lay">' + head + SlideView.html(e.lay) + '</section>';   // tampilan persis slide
     var body = '';
     if (e.type === 'tier') {
       var n = (e.tiers || []).length;
