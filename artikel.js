@@ -302,12 +302,14 @@
         g.seen[x.it.sku] = 1;
         x.it.bins.forEach(function (b) {
           if (!b.qty) return;
-          g.rows.push({ bin: b.bin, g: b.g, zona: ZONA[b.g] || b.zone, sku: x.it.sku, nama: x.it.base || x.it.name, warna: x.it.color, size: x.it.size, qty: b.qty, normal: best.normal || 0, disc: best.disc || 0, promo: best.promo || 0 });
+          var mc = function (v) { v = tx(v); return !v || v === '-' || /^\d+$/.test(v) ? '' : v; };
+          g.rows.push({ bin: b.bin, g: b.g, zona: ZONA[b.g] || b.zone, mc2: mc(x.it.mc2), mc3: mc(x.it.mc3), mc4: mc(x.it.mc4), sku: x.it.sku, nama: x.it.base || x.it.name, warna: x.it.color, size: x.it.size, qty: b.qty, normal: best.normal || 0, disc: best.disc || 0, promo: best.promo || 0 });
         });
       });
     });
     order.forEach(function (k) {
-      G[k].rows.sort(function (a, b) { return (ZORD[a.g] - ZORD[b.g]) || String(a.bin).localeCompare(String(b.bin), 'id', { numeric: true }) || a.nama.localeCompare(b.nama) || a.sku.localeCompare(b.sku); });
+      var mcK = function (v) { return v ? '0' + v : '1'; };   // MC kosong di paling bawah
+      G[k].rows.sort(function (a, b) { return mcK(a.mc4).localeCompare(mcK(b.mc4)) || a.mc2.localeCompare(b.mc2) || a.mc3.localeCompare(b.mc3) || (ZORD[a.g] - ZORD[b.g]) || String(a.bin).localeCompare(String(b.bin), 'id', { numeric: true }) || a.nama.localeCompare(b.nama) || a.sku.localeCompare(b.sku); });
     });
     return order.map(function (k) { return G[k]; });
   }
@@ -319,8 +321,9 @@
     wb.creator = 'Promo Eigerindo';
     var NAVY = 'FF073763', LINE = { style: 'thin', color: { argb: 'FFB8C2D0' } }, B4 = { top: LINE, left: LINE, bottom: LINE, right: LINE };
     var RP = '"Rp "#,##0;-"Rp "#,##0;"-"', toko = stock.loc || meta.site;
-    var HEAD = ['No', 'Lokasi Bin', 'Zona', 'SKU', 'Nama Artikel', 'Warna', 'Size', 'Qty Stock', 'Harga Awal', 'Diskon', 'Harga Setelah Diskon', 'Cek'];
-    var WID = [4.5, 15, 8.5, 15, 34, 13, 7, 7.5, 13, 8, 15, 5.5];
+    var HEAD = ['Lokasi Bin', 'Zona', 'MC Lv2', 'MC Lv3', 'MC Lv4', 'SKU', 'Nama Artikel', 'Warna', 'Size', 'Qty Stock', 'Harga Awal', 'Diskon', 'Harga Setelah Diskon', 'Cek'];
+    var WID = [13, 7.5, 14, 12.5, 18, 13.5, 27, 7, 6, 6.5, 11.5, 6.5, 12.5, 4.5];
+    var NC = HEAD.length, LASTC = 'N';   // kolom terakhir (14 kolom)
     function setup(ws, title, rows) {
       ws.pageSetup = { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, horizontalCentered: true,
         margins: { left: 0.3, right: 0.3, top: 0.45, bottom: 0.55, header: 0.2, footer: 0.25 }, printTitlesRow: rows };
@@ -349,28 +352,31 @@
       ws.columns = WID.map(function (w) { return { width: w }; });
       var t = ws.addRow([g.title.toUpperCase()]); t.font = { bold: true, size: 13, color: { argb: NAVY } }; t.height = 20;
       ws.addRow(['Toko: ' + toko + (g.periode ? '   ·   Periode: ' + g.periode : '')]).font = { size: 9.5 };
-      ws.addRow(['Dicetak: ' + new Date().toLocaleString('id-ID') + '   ·   Diurutkan per zona lalu lokasi bin. Kolom "Cek" untuk dicentang saat pengecekan.']).font = { size: 8.5, italic: true, color: { argb: 'FF64748B' } };
-      ['A1:L1', 'A2:L2', 'A3:L3'].forEach(function (m) { ws.mergeCells(m); });
+      ws.addRow(['Dicetak: ' + new Date().toLocaleString('id-ID') + '   ·   Diurutkan per MC Lv4 (warna latar berganti tiap grup MC Lv4), lalu zona & lokasi bin. Kolom "Cek" untuk dicentang saat pengecekan.']).font = { size: 8.5, italic: true, color: { argb: 'FF64748B' } };
+      ['A1:' + LASTC + '1', 'A2:' + LASTC + '2', 'A3:' + LASTC + '3'].forEach(function (m) { ws.mergeCells(m); });
       var h = ws.addRow(HEAD); h.height = 30;
-      h.eachCell(function (c) { c.font = { bold: true, size: 9.5, color: { argb: 'FFFFFFFF' } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } }; c.border = B4; c.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }; });
-      var tot = 0;
+      h.eachCell(function (c) { c.font = { bold: true, size: 9, color: { argb: 'FFFFFFFF' } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } }; c.border = B4; c.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }; });
+      var tot = 0, grp = -1, prev = null, TOP = { style: 'medium', color: { argb: NAVY } };
       g.rows.forEach(function (r, i) {
         tot += r.qty;
-        var row = ws.addRow([i + 1, r.bin, r.zona, r.sku, r.nama, r.warna, r.size, r.qty, r.normal || null, r.disc ? r.disc / 100 : null, r.promo || null, '']);
-        row.font = { size: 9.5 };
+        var baru = prev === null || r.mc4 !== prev; if (baru) grp++; prev = r.mc4;
+        var row = ws.addRow([r.bin, r.zona, r.mc2, r.mc3, r.mc4, r.sku, r.nama, r.warna, r.size, r.qty, r.normal || null, r.disc ? r.disc / 100 : null, r.promo || null, '']);
+        row.font = { size: 9 };
         row.eachCell({ includeEmpty: true }, function (c, n) {
-          c.border = B4;
-          c.alignment = { vertical: 'middle', wrapText: n === 5, horizontal: n === 5 || n === 6 ? 'left' : n >= 9 && n <= 11 ? 'right' : 'center' };
-          if (i % 2) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF4F6FA' } };
+          c.border = baru && i ? { top: TOP, left: LINE, bottom: LINE, right: LINE } : B4;          // garis tebal = awal grup MC Lv4 baru
+          c.alignment = { vertical: 'middle', wrapText: (n >= 3 && n <= 5) || n === 7, horizontal: (n >= 3 && n <= 5) || n === 7 || n === 8 ? 'left' : n >= 11 && n <= 13 ? 'right' : 'center' };
+          if (grp % 2) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEEF2F8' } };
         });
-        row.getCell(2).font = { size: 10, bold: true };
-        row.getCell(4).numFmt = '@';
-        row.getCell(9).numFmt = RP; row.getCell(11).numFmt = RP; row.getCell(10).numFmt = '0.#%';
-        row.getCell(11).font = { size: 10, bold: true, color: { argb: 'FFC2185B' } };
-        if (r.g === 'dmg') row.getCell(3).font = { size: 9.5, color: { argb: 'FFB91C1C' }, bold: true };
+        row.getCell(1).font = { size: 10, bold: true };
+        [3, 4].forEach(function (k) { row.getCell(k).font = { size: 8, color: { argb: 'FF475569' } }; });
+        row.getCell(5).font = { size: 9, bold: true, color: { argb: NAVY } };
+        row.getCell(6).numFmt = '@';
+        row.getCell(11).numFmt = RP; row.getCell(13).numFmt = RP; row.getCell(12).numFmt = '0.#%';
+        row.getCell(13).font = { size: 9.5, bold: true, color: { argb: 'FFC2185B' } };
+        if (r.g === 'dmg') row.getCell(2).font = { size: 9, color: { argb: 'FFB91C1C' }, bold: true };
       });
-      var f = ws.addRow(['', '', '', '', 'TOTAL', '', '', tot, '', '', '', '']);
-      f.eachCell({ includeEmpty: true }, function (c, n) { c.font = { bold: true, size: 10 }; c.border = B4; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8EDF5' } }; c.alignment = { horizontal: n === 8 ? 'center' : 'left' }; });
+      var f = ws.addRow(['', '', '', '', '', '', 'TOTAL', '', '', tot, '', '', '', '']);
+      f.eachCell({ includeEmpty: true }, function (c, n) { c.font = { bold: true, size: 10 }; c.border = B4; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8EDF5' } }; c.alignment = { horizontal: n === 10 ? 'center' : 'left' }; });
       setup(ws, g.title, '4:4');
     });
     var buf = await wb.xlsx.writeBuffer();
