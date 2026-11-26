@@ -215,7 +215,7 @@ table.gt{border-collapse:separate;border-spacing:0;font-size:11px;width:100%;min
 .lvt td{padding:7px 10px;border-top:1px solid var(--line)}
 @media (min-width:960px){.ktiles{grid-template-columns:repeat(4,minmax(0,1fr))}.kt b{font-size:28px}}
 </style>
-<link rel="stylesheet" href="ppt.css?v=18">
+<link rel="stylesheet" href="ppt.css?v=19">
 </head>
 <body class="locked">
 
@@ -629,16 +629,43 @@ function vSemua() {
         return '<div class="pdiv" style="--c:' + colorOf(c) + '"><h2>Promo<span>' + esc(catLabel(c)) + '</span></h2><small>' + L.length + ' promo</small></div><div class="cards">' + L.map(promoCard).join('') + '</div>';
       }).join('') : '<div class="empty">Tidak ada promo yang cocok.</div>') + '</div></section>';
 }
+function upcoming() {                                     // promo yang belum mulai (semua bulan yang sudah terbit)
+  return (App.data.promos || []).map(function (p) { return { p: p, S: state(p) }; })
+    .filter(function (x) { return !x.S.hold && !x.S.on && x.S.next; })
+    .sort(function (a, b) { return a.S.next.localeCompare(b.S.next) || catRank(a.p.cat) - catRank(b.p.cat) || byPrio(a.p, b.p); });
+}
 function infoCount() {
   if (!App.data) return 0;
   var B = App.data.bulan[App.month] || {};
-  return (B.info || []).length + monthPromos().filter(function (p) { return (p.extra || []).length; }).length;
+  return (B.info || []).length + monthPromos().filter(function (p) { return (p.extra || []).length; }).length
+    + upcoming().filter(function (x) { return x.S.to <= 7; }).length;
+}
+function hasLists(p) {
+  var B = App.data.bulan[p.month] || {}, A = B.artikel && B.artikel.lists || [];
+  return A.filter(function (l) { return l.promoId === p.id; }).length + (p.excel || []).length;
+}
+function upcomingHtml() {
+  var U = upcoming();
+  var h = '<section class="panel upc"><div class="ph"><h2>Promo akan datang</h2><span class="sub" style="margin-left:auto">' + U.length + ' promo</span></div>';
+  if (!U.length) return h + '<div class="empty">Belum ada promo berikutnya yang sudah terbit.</div></section>';
+  var grp = function (to) { return to <= 1 ? 'Mulai besok' : to <= 7 ? 'Minggu ini' : to <= 14 ? '2 minggu lagi' : 'Lebih dari 2 minggu lagi'; }, last = '';
+  U.forEach(function (x) {
+    var p = x.p, S = x.S, g = grp(S.to), d = S.next, c = colorOf(p.cat), nl = hasLists(p), nx = (p.extra || []).length;
+    if (g !== last) { h += '<h3 class="upc-g">' + g + '</h3>'; last = g; }
+    h += '<button class="upc-i" data-p="' + esc(p.id) + '" style="--c:' + c + '">'
+      + '<span class="upc-d"><b>' + (+d.slice(8)) + '</b><small>' + MON[+d.slice(5, 7) - 1] + '</small></span>'
+      + '<span class="upc-t"><span class="cat">' + esc(catLabel(p.cat)) + '</span><b>' + esc(p.title) + '</b>'
+      + '<small>' + (S.to <= 1 ? 'Mulai besok' : 'Mulai ' + S.to + ' hari lagi') + ' · ' + esc(p.periode || rangeTxt(p.ranges)) + '</small>'
+      + '<span class="upc-tags"><span>📄 Juknis lengkap</span>' + (nx ? '<span>🧭 ' + nx + ' slide detail</span>' : '') + (nl ? '<span>📋 List artikel</span>' : '<span class="no">List artikel belum ada</span>') + '</span></span>'
+      + '<span class="go">' + svg('next') + '</span></button>';
+  });
+  return h + '</section>';
 }
 function vInfo() {
   var B = App.data.bulan[App.month] || {}, INF = B.info || [], XN = { tier: 'Detail tiering', eksekusi: 'Teknis eksekusi', steps: 'Alur langkah' };
   var XI = { tier: 'list', eksekusi: 'clock', steps: 'zap' };
   var withX = monthPromos().filter(function (p) { return (p.extra || []).length; });
-  var h = '<section class="sheet">' + head('Info tambahan', fmtMonth(App.month) + ' · slide detail dari juknis');
+  var h = '<section class="sheet">' + head('Info tambahan', 'Promo berikutnya & slide detail juknis') + upcomingHtml();
   h += '<section class="panel"><div class="ph"><h2>Info umum</h2><span class="sub" style="margin-left:auto">' + INF.length + ' info</span></div>'
     + (INF.length ? '<div class="xl">' + INF.map(function (e, k) {
         return '<button class="xb" data-info="' + k + '"><span class="x" style="background:var(--orange-tint);color:var(--orange-2)">' + svg('info') + '</span><span><b>' + esc(e.title || 'Info tambahan') + '</b><small>' + esc(e.sub || e.lead || 'berlaku untuk semua promo') + '</small></span><span class="go">' + svg('next') + '</span></button>';
