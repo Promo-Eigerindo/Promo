@@ -262,6 +262,124 @@
     X.writeFile(wb, fn);
     return fn;
   }
+  /* ------------------------------------------- ekspor siap print A4 (1 sheet per promo) */
+  var EXJS_URLS = ['https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js', 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js'], _ex = null;
+  function needExcelJS() {
+    if (window.ExcelJS) return Promise.resolve(true);
+    return _ex || (_ex = new Promise(function (res) {
+      var i = 0;
+      (function next() {
+        if (i >= EXJS_URLS.length) { _ex = null; res(false); return; }
+        var s = document.createElement('script'); s.src = EXJS_URLS[i++];
+        s.onload = function () { if (window.ExcelJS) res(true); else next(); }; s.onerror = next;
+        document.head.appendChild(s);
+      })();
+    }));
+  }
+  var ZONA = { disp: 'Display', wh: 'Gudang', oth: 'Lainnya', dmg: 'Damage' }, ZORD = { disp: 0, wh: 1, oth: 2, dmg: 3 };
+  /* kelompokkan hasil cek per promo → baris per bin */
+  function printGroups(R, lists, promoOf) {
+    var G = {}, order = [];
+    lists.forEach(function (l, li) {
+      var key = l.promoId ? 'p:' + l.promoId : 'l:' + l.name;
+      if (!G[key]) {
+        var P = l.promoId && promoOf ? promoOf(l.promoId) : null;
+        G[key] = { title: P && P.title ? P.title : l.name, periode: P ? P.periode || '' : '', cat: P ? P.cat || '' : '', lists: [], rows: [], seen: {} };
+        order.push(key);
+      }
+      G[key].lists.push(li);
+    });
+    R.found.forEach(function (x) {
+      var kn = x.pr && x.pr.src === 'katalog' ? x.pr.normal : 0;
+      order.forEach(function (k) {
+        var g = G[k], best = null;
+        x.hits.forEach(function (h) {
+          if (g.lists.indexOf(h[0]) < 0) return;
+          var l = lists[h[0]], p = priceOf(l, l.rows[h[1]], kn);
+          if (!best || p.disc > best.disc) best = p;
+        });
+        if (!best || g.seen[x.it.sku]) return;
+        g.seen[x.it.sku] = 1;
+        x.it.bins.forEach(function (b) {
+          if (!b.qty) return;
+          g.rows.push({ bin: b.bin, g: b.g, zona: ZONA[b.g] || b.zone, sku: x.it.sku, nama: x.it.base || x.it.name, warna: x.it.color, size: x.it.size, qty: b.qty, normal: best.normal || 0, disc: best.disc || 0, promo: best.promo || 0 });
+        });
+      });
+    });
+    order.forEach(function (k) {
+      G[k].rows.sort(function (a, b) { return (ZORD[a.g] - ZORD[b.g]) || String(a.bin).localeCompare(String(b.bin), 'id', { numeric: true }) || a.nama.localeCompare(b.nama) || a.sku.localeCompare(b.sku); });
+    });
+    return order.map(function (k) { return G[k]; });
+  }
+  async function exportPrint(R, stock, lists, meta) {
+    if (!(await needExcelJS())) throw new Error('Pembuat Excel gagal dimuat. Cek koneksi internet.');
+    var groups = printGroups(R, lists, meta.promoOf).filter(function (g) { return g.rows.length; });
+    if (!groups.length) throw new Error('Tidak ada stok barang promo untuk diekspor.');
+    var wb = new window.ExcelJS.Workbook(), used = {};
+    wb.creator = 'Promo Eigerindo';
+    var NAVY = 'FF073763', LINE = { style: 'thin', color: { argb: 'FFB8C2D0' } }, B4 = { top: LINE, left: LINE, bottom: LINE, right: LINE };
+    var RP = '"Rp "#,##0;-"Rp "#,##0;"-"', toko = stock.loc || meta.site;
+    var HEAD = ['No', 'Lokasi Bin', 'Zona', 'SKU', 'Nama Artikel', 'Warna', 'Size', 'Qty Stock', 'Harga Awal', 'Diskon', 'Harga Setelah Diskon', 'Cek'];
+    var WID = [4.5, 15, 8.5, 15, 34, 13, 7, 7.5, 13, 8, 15, 5.5];
+    function setup(ws, title, rows) {
+      ws.pageSetup = { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, horizontalCentered: true,
+        margins: { left: 0.3, right: 0.3, top: 0.45, bottom: 0.55, header: 0.2, footer: 0.25 }, printTitlesRow: rows };
+      ws.headerFooter = { oddFooter: '&L&8 ' + toko.replace(/&/g, '&&') + '&C&8 ' + title.replace(/&/g, '&&').slice(0, 60) + '&R&8 Hal &P / &N' };
+    }
+    /* ringkasan */
+    var sum = wb.addWorksheet('Ringkasan', { views: [{ showGridLines: false }] });
+    sum.columns = [{ width: 4.5 }, { width: 46 }, { width: 24 }, { width: 12 }, { width: 12 }, { width: 12 }];
+    sum.addRow(['CEK STOK PROMO ' + String(meta.monthLabel || '').toUpperCase()]).font = { bold: true, size: 15, color: { argb: NAVY } };
+    sum.addRow(['Toko: ' + toko]);
+    sum.addRow(['File stok: ' + (meta.file || '-') + '   ·   Dicetak: ' + new Date().toLocaleString('id-ID')]);
+    sum.addRow([]);
+    var hr = sum.addRow(['No', 'Promo', 'Periode', 'Jumlah SKU', 'Baris bin', 'Total qty']);
+    hr.eachCell(function (c) { c.font = { bold: true, color: { argb: 'FFFFFFFF' } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } }; c.border = B4; c.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }; });
+    groups.forEach(function (g, i) {
+      var sk = {}; g.rows.forEach(function (r) { sk[r.sku] = 1; });
+      var r = sum.addRow([i + 1, g.title, g.periode, Object.keys(sk).length, g.rows.length, g.rows.reduce(function (m, r) { return m + r.qty; }, 0)]);
+      r.eachCell({ includeEmpty: true }, function (c, n) { c.border = B4; c.alignment = { vertical: 'middle', wrapText: n === 2 || n === 3, horizontal: n === 1 || n >= 4 ? 'center' : 'left' }; });
+    });
+    sum.mergeCells('A1:F1'); sum.mergeCells('A2:F2'); sum.mergeCells('A3:F3');
+    setup(sum, 'Ringkasan', '5:5'); sum.pageSetup.orientation = 'portrait';
+    /* satu sheet per promo */
+    groups.forEach(function (g) {
+      var nm = sheetName(g.title, used);
+      var ws = wb.addWorksheet(nm, { views: [{ state: 'frozen', ySplit: 4, showGridLines: false }] });
+      ws.columns = WID.map(function (w) { return { width: w }; });
+      var t = ws.addRow([g.title.toUpperCase()]); t.font = { bold: true, size: 13, color: { argb: NAVY } }; t.height = 20;
+      ws.addRow(['Toko: ' + toko + (g.periode ? '   ·   Periode: ' + g.periode : '')]).font = { size: 9.5 };
+      ws.addRow(['Dicetak: ' + new Date().toLocaleString('id-ID') + '   ·   Diurutkan per zona lalu lokasi bin. Kolom "Cek" untuk dicentang saat pengecekan.']).font = { size: 8.5, italic: true, color: { argb: 'FF64748B' } };
+      ['A1:L1', 'A2:L2', 'A3:L3'].forEach(function (m) { ws.mergeCells(m); });
+      var h = ws.addRow(HEAD); h.height = 30;
+      h.eachCell(function (c) { c.font = { bold: true, size: 9.5, color: { argb: 'FFFFFFFF' } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } }; c.border = B4; c.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }; });
+      var tot = 0;
+      g.rows.forEach(function (r, i) {
+        tot += r.qty;
+        var row = ws.addRow([i + 1, r.bin, r.zona, r.sku, r.nama, r.warna, r.size, r.qty, r.normal || null, r.disc ? r.disc / 100 : null, r.promo || null, '']);
+        row.font = { size: 9.5 };
+        row.eachCell({ includeEmpty: true }, function (c, n) {
+          c.border = B4;
+          c.alignment = { vertical: 'middle', wrapText: n === 5, horizontal: n === 5 || n === 6 ? 'left' : n >= 9 && n <= 11 ? 'right' : 'center' };
+          if (i % 2) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF4F6FA' } };
+        });
+        row.getCell(2).font = { size: 10, bold: true };
+        row.getCell(4).numFmt = '@';
+        row.getCell(9).numFmt = RP; row.getCell(11).numFmt = RP; row.getCell(10).numFmt = '0.#%';
+        row.getCell(11).font = { size: 10, bold: true, color: { argb: 'FFC2185B' } };
+        if (r.g === 'dmg') row.getCell(3).font = { size: 9.5, color: { argb: 'FFB91C1C' }, bold: true };
+      });
+      var f = ws.addRow(['', '', '', '', 'TOTAL', '', '', tot, '', '', '', '']);
+      f.eachCell({ includeEmpty: true }, function (c, n) { c.font = { bold: true, size: 10 }; c.border = B4; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8EDF5' } }; c.alignment = { horizontal: n === 8 ? 'center' : 'left' }; });
+      setup(ws, g.title, '4:4');
+    });
+    var buf = await wb.xlsx.writeBuffer();
+    var fn = 'Cetak_Stok_Promo_' + (stock.siteCode || String(meta.site || 'toko').split(' ')[0]) + '_' + meta.month + '.xlsx';
+    var blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = fn; document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+    return fn;
+  }
   function exportList(lists, month) {
     var X = window.XLSX, wb = X.utils.book_new(), used = {};
     lists.forEach(function (l) { var ws = X.utils.aoa_to_sheet([['Kode', 'Nama'].concat(l.cols)].concat(l.rows)); ws['!cols'] = [{ wch: 16 }, { wch: 44 }]; X.utils.book_append_sheet(wb, ws, sheetName(l.name, used)); });
@@ -269,5 +387,5 @@
   }
 
   window.Artikel = { needXLSX: needXLSX, readListSheets: readListSheets, buildList: buildList, keyStats: keyStats, keyOf: keyOf,
-    readByBin: readByBin, match: match, priceOf: priceOf, attachPrices: attachPrices, listPriceCols: listPriceCols, parseDisc: parseDisc, parseMoney: parseMoney, exportResult: exportResult, exportList: exportList, ST_TXT: ST_TXT };
+    readByBin: readByBin, match: match, priceOf: priceOf, attachPrices: attachPrices, listPriceCols: listPriceCols, parseDisc: parseDisc, parseMoney: parseMoney, exportResult: exportResult, exportPrint: exportPrint, printGroups: printGroups, exportList: exportList, ST_TXT: ST_TXT };
 })();
