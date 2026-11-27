@@ -135,7 +135,7 @@
     while (out.length && out[out.length - 1][1].every(function (r) { return !r[0].trim(); })) out.pop();
     return out;
   }
-  function pptShapes(xml, CX, CY, rel) {
+  function pptShapes(xml, CX, CY, rel, relImg) {
     var doc = new DOMParser().parseFromString(xml, 'application/xml'), K = 720 / CX, out = [];
     var tree = doc.getElementsByTagName('p:spTree')[0]; if (!tree) return out;
     function walk(node, T) {                                   // T = transform grup: x' = ox + (x - cx) * s
@@ -150,7 +150,7 @@
           walk(el, function (x, y, w, h) { var a = [ox + (x - cx) * sx, oy + (y - cy) * sy, w * sx, h * sy]; return T ? T.apply(null, a) : a; });
           return;
         }
-        if (n !== 'p:sp' && n !== 'p:cxnSp' && n !== 'p:graphicFrame') return;
+        if (n !== 'p:sp' && n !== 'p:cxnSp' && n !== 'p:graphicFrame' && n !== 'p:pic') return;
         var spPr = kid(el, 'p:spPr'), xf = n === 'p:graphicFrame' ? kid(el, 'p:xfrm') : kid(spPr, 'a:xfrm');
         if (!xf) return;
         var off = kid(xf, 'a:off'), ext = kid(xf, 'a:ext'); if (!off || !ext) return;
@@ -180,6 +180,15 @@
           out.push([R(x), R(y), R(w), R(Math.max(h, th)), 'T', '', '', { c: cols.map(R), r: TR, hd: fRow ? 1 : 0 }, '', 0]);
           return;
         }
+        if (n === 'p:pic') {                                                      // gambar
+          var bf = kid(el, 'p:blipFill'), bl = kid(bf, 'a:blip'), emb = bl && (bl.getAttribute('r:embed') || bl.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'embed'));
+          if (!emb || !relImg || !relImg[emb]) return;
+          var sr = kid(bf, 'a:srcRect'), cr = sr ? ['l', 't', 'r', 'b'].map(function (k) { return (+sr.getAttribute(k) || 0) / 100000; }) : [0, 0, 0, 0];
+          var pl = kid(spPr, 'a:ln'), pc = pl && !kid(pl, 'a:noFill') ? colorOf(kid(pl, 'a:solidFill')) : '';
+          var pg = kid(spPr, 'a:prstGeom'), pr = pg && pg.getAttribute('prst') === 'roundRect' ? R(Math.min(w, h) * 0.1) : 0;
+          out.push([R(x), R(y), R(w), R(h), 'I', '', pc, { src: relImg[emb], crop: cr }, '', pr]);
+          return;
+        }
         var g = kid(spPr, 'a:prstGeom'), geom = g ? g.getAttribute('prst') : '';
         var G = n === 'p:cxnSp' ? 'l' : geom === 'ellipse' ? 'e' : geom === 'roundRect' ? 'R' : geom === 'rightArrow' || geom === 'chevron' || geom === 'triangle' ? 'a' : 'r';
         var fill = kid(spPr, 'a:noFill') ? '' : colorOf(kid(spPr, 'a:solidFill'));
@@ -200,6 +209,30 @@
     walk(tree, null);
     return out;
   }
+  /* gambar di slide → JPEG ringkas (data URL); diunggah ke server saat diterbitkan */
+  async function loadImages(L, zip) {
+    var keep = [];
+    for (var i = 0; i < L.s.length; i++) {
+      var s = L.s[i];
+      if (s[4] !== 'I') { keep.push(s); continue; }
+      try {
+        var f = zip.file(s[7].src); if (!f || !/\.(png|jpe?g|gif|bmp|webp)$/i.test(s[7].src)) continue;   // EMF/WMF/SVG dilewati
+        var bytes = await f.async('uint8array'), ext = s[7].src.split('.').pop().toLowerCase();
+        var url = URL.createObjectURL(new Blob([bytes], { type: 'image/' + (ext === 'jpg' ? 'jpeg' : ext) }));
+        var img = await new Promise(function (res, rej) { var im = new Image(); im.onload = function () { res(im); }; im.onerror = rej; im.src = url; });
+        var c = s[7].crop, sx = img.naturalWidth * c[0], sy = img.naturalHeight * c[1], sw = img.naturalWidth * (1 - c[0] - c[2]), sh = img.naturalHeight * (1 - c[1] - c[3]);
+        var W = Math.min(1100, Math.max(200, Math.round(s[2] * 2.6))), H = Math.round(W * sh / sw);
+        if (sw < W) { W = Math.round(sw); H = Math.round(sh); }
+        var cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+        var cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, W, H);
+        cx.drawImage(img, sx, sy, sw, sh, 0, 0, W, H);
+        URL.revokeObjectURL(url);
+        s[7] = { d: cv.toDataURL('image/jpeg', 0.8), wh: [W, H] };
+        keep.push(s);
+      } catch (e) { /* gambar gagal dibaca → dilewati */ }
+    }
+    L.s = keep;
+  }
   /* buang kepala slide (pita judul) & kaki slide; sisanya disimpan ringkas */
   function layoutOf(shapes) {
     if (!shapes || !shapes.length) return null;
@@ -208,7 +241,7 @@
     shapes.forEach(function (s) { if (s[1] < top + 8 && s[1] >= top - 1 && s[3] <= 8 && s[2] > 600) top = Math.max(top, s[1] + s[3]); }); // garis aksen di bawahnya
     shapes.forEach(function (s) { if (s[1] > 360 && s[2] > 600 && s[5] && s[3] < 40) bot = Math.min(bot, s[1]); });                // pita kaki
     var body = shapes.filter(function (s) { return s[1] >= top - 1 && s[1] + s[3] <= bot + 1 && !(s[1] < top + 2 && s[3] < 2); });
-    if (body.filter(function (s) { return s[4] === 'T' || s[7].length; }).length < 2) return null;
+    if (body.filter(function (s) { return s[4] === 'T' || s[4] === 'I' || s[7].length; }).length < 2) return null;
     var lo = Math.min.apply(null, body.map(function (s) { return s[1]; })), hi = Math.max.apply(null, body.map(function (s) { return s[1] + s[3]; }));
     return { y0: Math.max(top, lo - 8), y1: Math.min(bot, hi + 10), s: body };            // potong ruang kosong atas/bawah
   }
@@ -235,10 +268,11 @@
     var pages = [];
     for (var i = 0; i < files.length; i++) {
       var f = zip.file(files[i]); if (!f) continue;
-      var rf = zip.file(files[i].replace(/slides\/(slide\d+\.xml)$/, 'slides/_rels/$1.rels')), rel = {};
-      if (rf) { var rx = await rf.async('string'), rr, re2 = /<Relationship\b[^>]*>/g; while ((rr = re2.exec(rx))) { var idm = rr[0].match(/Id="([^"]+)"/), tm = rr[0].match(/Target="([^"]+)"/); if (idm && tm && /^https?:|^mailto:/i.test(tm[1])) rel[idm[1]] = tm[1].replace(/&amp;/g, '&'); } }
+      var rf = zip.file(files[i].replace(/slides\/(slide\d+\.xml)$/, 'slides/_rels/$1.rels')), rel = {}, relImg = {};
+      if (rf) { var rx = await rf.async('string'), rr, re2 = /<Relationship\b[^>]*>/g; while ((rr = re2.exec(rx))) { var idm = rr[0].match(/Id="([^"]+)"/), tm = rr[0].match(/Target="([^"]+)"/); if (idm && tm && /^https?:|^mailto:/i.test(tm[1])) rel[idm[1]] = tm[1].replace(/&amp;/g, '&'); else if (idm && tm && /\/image"/.test(rr[0])) relImg[idm[1]] = 'ppt/' + tm[1].replace(/^\.\.\//, ''); } }
       var xml = await f.async('string'), its = pptItems(xml, CX, CY, rel);
-      try { its.lay = layoutOf(pptShapes(xml, CX, CY, rel)); } catch (e) { its.lay = null; }
+      try { its.lay = layoutOf(pptShapes(xml, CX, CY, rel, relImg)); } catch (e) { its.lay = null; }
+      if (its.lay) await loadImages(its.lay, zip);
       pages.push(its);
     }
     return pages;
