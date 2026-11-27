@@ -215,7 +215,7 @@ table.gt{border-collapse:separate;border-spacing:0;font-size:11px;width:100%;min
 .lvt td{padding:7px 10px;border-top:1px solid var(--line)}
 @media (min-width:960px){.ktiles{grid-template-columns:repeat(4,minmax(0,1fr))}.kt b{font-size:28px}}
 </style>
-<link rel="stylesheet" href="ppt.css?v=19">
+<link rel="stylesheet" href="ppt.css?v=20">
 </head>
 <body class="locked">
 
@@ -257,7 +257,7 @@ table.gt{border-collapse:separate;border-spacing:0;font-size:11px;width:100%;min
 
 <script src="config.js"></script>
 <script src="icons.js?v=18"></script>
-<script src="slide.js?v=18"></script>
+<script src="slide.js?v=19"></script>
 <script src="artikel.js?v=21"></script>
 <script src="foto.js?v=18"></script>
 <script>
@@ -334,6 +334,7 @@ function api(a, extra) {
   Object.keys(extra || {}).forEach(function (k) { u.searchParams.set(k, extra[k]); });
   return fetchT(u.toString(), { redirect: 'follow' }, 45000).then(readJson).then(chk);
 }
+if (window.SlideView) SlideView.fetch = function (ids) { return api('img', { ids: ids.join(',') }).then(function (r) { return r.imgs || {}; }); };
 function post(body) {
   return fetchT(CFG.API, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify(Object.assign({ t: App.token }, body)) }, 60000).then(readJson).then(chk);
