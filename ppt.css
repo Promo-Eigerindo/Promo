@@ -417,3 +417,10 @@ body{font-size:14.5px}
 .upc-tags span.no{background:#FEF3C7;color:#92400E}
 .upc-i .go{flex:none;color:var(--muted,#94A3B8)}
 .upc-i .go svg{width:18px;height:18px}
+
+.sla .shi{padding:0;overflow:hidden;background:#fff}
+.sla .shi img{display:block;width:100%;height:100%;object-fit:fill}
+.slf .fn-img img{display:block;width:100%;height:auto;border-radius:4px;background:#F1F5F9}
+.slf .fn-img img[data-img],.sla .shi img[data-img]{background:linear-gradient(90deg,#EEF2F7 25%,#F8FAFC 50%,#EEF2F7 75%);background-size:200% 100%;animation:imgsh 1.2s infinite linear}
+.slf .fn-img img[data-img]{min-height:120px}
+@keyframes imgsh{to{background-position:-200% 0}}
