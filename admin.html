@@ -62,7 +62,7 @@ textarea.inp{min-height:80px;resize:vertical}
 .btn.warnb{color:var(--orange-2);border-color:#F3C3A8}
 .btn.warnb:hover{background:var(--orange-tint);border-color:var(--orange)}
 </style>
-<link rel="stylesheet" href="ppt.css?v=19">
+<link rel="stylesheet" href="ppt.css?v=20">
 </head>
 <body class="locked">
 
@@ -78,7 +78,7 @@ textarea.inp{min-height:80px;resize:vertical}
     <div class="err" id="aErr"></div>
     <button type="button" class="btn sm" id="aTest" style="margin-top:4px">Tes koneksi server</button>
     <div class="small muted" id="aTestOut" style="margin-top:8px;line-height:1.5"></div>
-    <div class="small muted" style="margin-top:10px">Versi halaman: 19</div>
+    <div class="small muted" style="margin-top:10px">Versi halaman: 20</div>
   </form>
 </div>
 
@@ -104,8 +104,8 @@ textarea.inp{min-height:80px;resize:vertical}
 
 <script src="config.js"></script>
 <script src="icons.js?v=18"></script>
-<script src="parse.js?v=18"></script>
-<script src="slide.js?v=18"></script>
+<script src="parse.js?v=19"></script>
+<script src="slide.js?v=19"></script>
 <script src="artikel.js?v=21"></script>
 <script src="foto.js?v=18"></script>
 <script>
@@ -178,6 +178,21 @@ function post(body) {
     .then(function (j) { if (j && j.error) throw Object.assign(new Error(j.message || j.error), { code: j.error }); return j; });
 }
 
+if (window.SlideView) SlideView.fetch = function (ids) { return api('img', { ids: ids.join(',') }).then(function (r) { return r.imgs || {}; }); };
+/* gambar slide (data URL) → unggah ke sheet Gambar, lalu diganti id */
+function hashStr(t) { var h1 = 0x811c9dc5, h2 = 0; for (var i = 0; i < t.length; i++) { var c = t.charCodeAt(i); h1 = Math.imul(h1 ^ c, 16777619) >>> 0; h2 = (h2 * 31 + c) >>> 0; } return 'g' + h1.toString(36) + h2.toString(36) + t.length.toString(36); }
+async function uploadImages(extrasLists, month, onStep) {
+  var todo = [], done = 0;
+  extrasLists.forEach(function (arr) { (arr || []).forEach(function (ex) { ((ex.lay && ex.lay.s) || []).forEach(function (sh) { if (sh[4] === 'I' && sh[7] && sh[7].d) todo.push(sh); }); }); });
+  for (var i = 0; i < todo.length; i++) {
+    var sh = todo[i], id = hashStr(sh[7].d);
+    if (onStep) onStep(i + 1, todo.length);
+    await post({ a: 'imgSave', id: id, data: sh[7].d, month: month });
+    sh[7] = { id: id, wh: sh[7].wh }; done++;
+  }
+  return done;
+}
+function cloneEx(arr) { return (arr || []).map(function (x) { var y = Object.assign({}, x); if (x.lay) y.lay = JSON.parse(JSON.stringify(x.lay)); return y; }); }
 function testConn() {
   var o = $('#aTestOut'), t0 = Date.now();
   o.textContent = 'Menghubungi server…';
@@ -690,9 +705,16 @@ function publish() {
   var X = A.W.extras || [];
   X.forEach(function (x) { if (typeof x.target === 'object' && A.W.promos.indexOf(x.target) < 0) x.target = 'umum'; });
   var promosOut = A.W.promos.map(function (p, i) {
-    var q = Object.assign({}, p); q.extra = (p.extra || []).concat(X.filter(function (x) { return x.target === p; }).map(function (x) { return x.ex; })); return q;
+    var q = Object.assign({}, p); q.extra = cloneEx((p.extra || []).concat(X.filter(function (x) { return x.target === p; }).map(function (x) { return x.ex; }))); return q;
   });
-  var metaOut = Object.assign({}, A.W.meta, { info: (A.W.meta.info || []).concat(X.filter(function (x) { return x.target === 'umum'; }).map(function (x) { return x.ex; })) });
+  var metaOut = Object.assign({}, A.W.meta, { info: cloneEx((A.W.meta.info || []).concat(X.filter(function (x) { return x.target === 'umum'; }).map(function (x) { return x.ex; }))) });
+  var month = A.W.month;
+  uploadImages(promosOut.map(function (q) { return q.extra; }).concat([metaOut.info]), month, function (i, n) { toast('Mengunggah gambar slide ' + i + ' / ' + n + '…', 20000); })
+    .then(function () { kirim(promosOut, metaOut, month); })
+    .catch(function (e) { toast('Gagal mengunggah gambar: ' + (e.message || e.code), 7000); });
+}
+function kirim(promosOut, metaOut, month) {
+  toast('Mengirim ke spreadsheet…', 8000);
   /* batas 1 sel Google Sheets = 50.000 huruf: bila tampilan slide terlalu besar, pakai tampilan ringkas */
   var cut = 0, fit = function (arr) {
     arr = arr.map(function (x) { return Object.assign({}, x); });
@@ -705,7 +727,7 @@ function publish() {
   promosOut.forEach(function (q) { q.extra = fit(q.extra); });
   metaOut.info = fit(metaOut.info);
   if (cut) toast(cut + ' slide terlalu besar, jadi tampil dalam versi ringkas.', 6000);
-  post({ a: 'save', month: A.W.month, meta: metaOut, promos: promosOut, memos: A.W.memos })
+  post({ a: 'save', month: month, meta: metaOut, promos: promosOut, memos: A.W.memos })
     .then(function (r) { A.data = normData(r.data); A.W = null; A.tab = 'promo'; history.replaceState(null, '', '#promo'); A.pm = r.data.months[r.data.months.length - 1]; render(); toast('Terbit. Toko sudah bisa melihatnya.'); })
     .catch(function (e) { toast('Gagal menerbitkan: ' + (e.message || e.code), 6000); });
 }
