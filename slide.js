@@ -11,7 +11,7 @@
     if (v.length === 8) return 'rgba(' + parseInt(v.slice(0, 2), 16) + ',' + parseInt(v.slice(2, 4), 16) + ',' + parseInt(v.slice(4, 6), 16) + ',' + (parseInt(v.slice(6), 16) / 255).toFixed(2) + ')';
     return '#' + v;
   }
-  function S(a) { return { x: a[0], y: a[1], w: a[2], h: a[3], g: a[4], fill: a[5], line: a[6], ps: a[4] === 'T' ? [] : a[7] || [], tb: a[4] === 'T' ? a[7] : null, anc: a[8], rad: a[9] || 0, lw: a[10] || 0.75, ins: a[11] || [7.2, 3.6, 7.2, 3.6] }; }
+  function S(a) { return { x: a[0], y: a[1], w: a[2], h: a[3], g: a[4], fill: a[5], line: a[6], im: a[4] === 'I' ? a[7] : null, ps: a[4] === 'T' || a[4] === 'I' ? [] : a[7] || [], tb: a[4] === 'T' ? a[7] : null, anc: a[8], rad: a[9] || 0, lw: a[10] || 0.75, ins: a[11] || [7.2, 3.6, 7.2, 3.6] }; }
   var URL_RE = /(https?:\/\/[^\s<]+)/g;
   function runHtml(r, unit, minPx) {
     var t = r[0]; if (t === '\n') return '<br>';
@@ -55,6 +55,12 @@
       }).join('') + '</div>';
     }).join('');
   }
+  function imgTag(im) {
+    if (!im) return '';
+    if (im.d) return '<img src="' + im.d + '" alt="" loading="lazy">';
+    var r = im.wh ? ' style="aspect-ratio:' + im.wh[0] + '/' + im.wh[1] + '"' : '';
+    return '<img data-img="' + esc(im.id) + '" alt="Gambar slide"' + r + ' src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">';
+  }
   function hasText(s) { return s.ps.some(function (p) { return p[1].some(function (r) { return r[0] && r[0].trim(); }); }); }
 
   /* ------------------------------------------------------------ tampilan PC (persis) */
@@ -65,6 +71,7 @@
     L.s.forEach(function (a) {
       var s = S(a);
       var st = 'left:' + (s.x / 7.2).toFixed(3) + '%;top:' + ((s.y - y0) / H * 100).toFixed(3) + '%;width:' + (s.w / 7.2).toFixed(3) + '%;height:' + (s.h / H * 100).toFixed(3) + '%;';
+      if (s.g === 'I') { h += '<div class="sh shi" style="' + st + (s.line ? 'border:' + u(s.lw) + ' solid ' + col(s.line) + ';' : '') + (s.rad ? 'border-radius:' + u(s.rad) + ';' : '') + '">' + imgTag(s.im) + '</div>'; return; }
       if (s.g === 'T') { h += '<div class="sh" style="' + st + 'padding:0;font-size:' + u(11) + '">' + tableHtml(s.tb, u, 'slt') + '</div>'; return; }
       if (s.g === 'l') { st += 'border-top:' + u(s.lw) + ' solid ' + col(s.line || '94A3B8') + ';height:0;'; h += '<div class="sh" style="' + st + '"></div>'; return; }
       if (s.fill) st += 'background:' + col(s.fill) + ';';
@@ -142,6 +149,7 @@
   function node(s, label) {
     var st = '', cls = 'fn';
     if (s.g === 'T') return tableFlow(s.tb);
+    if (s.g === 'I') return '<div class="fn fn-img"' + (small(s) ? ' style="width:' + Math.round(s.w * 1.35) + 'px"' : '') + '>' + imgTag(s.im) + '</div>';
     if (s.g === 'l') return '<div class="fn-l" style="border-top:1.5px solid ' + col(s.line || 'CBD5E1') + '"></div>';
     if (s.fill && s.g !== 'a') st += 'background:' + col(s.fill) + ';';
     if (s.line && s.g !== 'a') st += 'border:' + Math.max(1, Math.min(2.5, s.lw * 1.3)).toFixed(1) + 'px solid ' + col(s.line) + ';';
@@ -175,8 +183,33 @@
     items.forEach(function (s) { var c = s[p[0]] + s[p[1]] / 2, k = 0; while (k < cuts.length && c > cuts[k].at) k++; parts[k].push(s); });
     return parts.filter(function (q) { return q.length; });
   }
+  /* kolom sungguhan: celah vertikal ≥6pt di antara isi yang tidak selebar slide, kedua sisi cukup lebar */
+  function gutter(items) {
+    var L = Math.min.apply(null, items.map(function (s) { return s.x; })), Rr = Math.max.apply(null, items.map(function (s) { return s.x + s.w; })), W = Rr - L;
+    var part = items.filter(function (s) { return s.w < 0.8 * W; });
+    if (part.length < 2) return null;
+    var best = null;
+    gaps(part, 'x').forEach(function (g) {
+      if (g.w < 6) return;
+      var lw = Math.max.apply(null, part.filter(function (s) { return s.x + s.w / 2 < g.at; }).map(function (s) { return s.x + s.w; })) - L;
+      var rw = Rr - Math.min.apply(null, part.filter(function (s) { return s.x + s.w / 2 > g.at; }).map(function (s) { return s.x; }));
+      var min = Math.max(60, 0.15 * W);
+      if (lw >= min && rw >= min && (!best || g.w > best.w)) best = { at: g.at, l: g.at - g.w / 2, r: g.at + g.w / 2, w: g.w };
+    });
+    return best;
+  }
   function xycut(items) {
     if (items.length <= 1) return { leaf: items[0] };
+    var G = gutter(items);
+    if (G) {
+      var cross = function (s) { return s.x < G.l - 0.5 && s.x + s.w > G.r + 0.5; };
+      if (!items.some(cross)) { var cols = split(items, 'x', [G]).map(xycut), fl = []; cols.forEach(function (q) { if (q.h) fl = fl.concat(q.h); else fl.push(q); }); return { h: fl }; }
+      var peel = gaps(items, 'y').filter(function (g) {                    // potong pita selebar slide di atas/bawah kolom
+        var A = items.filter(function (s) { return s.y + s.h / 2 < g.at; }), B = items.filter(function (s) { return s.y + s.h / 2 >= g.at; });
+        return A.every(cross) || B.every(cross);
+      }).sort(function (a, b) { return b.w - a.w; })[0];
+      if (peel) { var pv = split(items, 'y', [peel]).map(xycut), fv = []; pv.forEach(function (q) { if (q.v) fv = fv.concat(q.v); else fv.push(q); }); return { v: fv }; }
+    }
     var vg = gaps(items, 'x'), hg = gaps(items, 'y'), best = null;
     vg.forEach(function (g) { var sc = g.w; if (!best || sc > best.sc) best = { ax: 'x', g: g, sc: sc }; });
     hg.forEach(function (g) { var sc = g.w * 2.5 + 0.01; if (!best || sc >= best.sc) best = { ax: 'y', g: g, sc: sc }; });   // baris diutamakan
@@ -236,5 +269,26 @@
     var v = b.closest('.slv'), on = v.classList.toggle('asli');
     b.textContent = on ? 'Kembali ke tampilan HP' : 'Lihat seperti slide asli';
   });
-  window.SlideView = { html: html };
+  /* gambar yang tersimpan di server diambil saat tampil */
+  var IMC = {}, wait = {};
+  function hydrate(root) {
+    var els = (root || document).querySelectorAll('img[data-img]'), need = [];
+    Array.prototype.forEach.call(els, function (el) {
+      var id = el.getAttribute('data-img');
+      if (IMC[id]) { el.src = IMC[id]; el.removeAttribute('data-img'); return; }
+      if (!wait[id] && need.indexOf(id) < 0) need.push(id);
+    });
+    if (!need.length || !window.SlideView.fetch) return;
+    need.forEach(function (id) { wait[id] = 1; });
+    for (var i = 0; i < need.length; i += 4) (function (ids) {
+      window.SlideView.fetch(ids).then(function (m) {
+        ids.forEach(function (id) { delete wait[id]; if (m && m[id]) IMC[id] = m[id]; });
+        hydrate(document);
+      }).catch(function () { ids.forEach(function (id) { delete wait[id]; }); });
+    })(need.slice(i, i + 4));
+  }
+  if (window.MutationObserver) new MutationObserver(function (ms) {
+    for (var i = 0; i < ms.length; i++) if (ms[i].addedNodes.length) { clearTimeout(hydrate._t); hydrate._t = setTimeout(hydrate, 30); return; }
+  }).observe(document.documentElement, { childList: true, subtree: true });
+  window.SlideView = { html: html, hydrate: hydrate, fetch: null };
 })();
