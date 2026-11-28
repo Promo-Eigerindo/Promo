@@ -215,7 +215,7 @@ table.gt{border-collapse:separate;border-spacing:0;font-size:11px;width:100%;min
 .lvt td{padding:7px 10px;border-top:1px solid var(--line)}
 @media (min-width:960px){.ktiles{grid-template-columns:repeat(4,minmax(0,1fr))}.kt b{font-size:28px}}
 </style>
-<link rel="stylesheet" href="ppt.css?v=21">
+<link rel="stylesheet" href="ppt.css?v=23">
 </head>
 <body class="locked">
 
@@ -256,8 +256,9 @@ table.gt{border-collapse:separate;border-spacing:0;font-size:11px;width:100%;min
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script src="config.js"></script>
-<script src="icons.js?v=21"></script>
+<script src="icons.js?v=22"></script>
 <script src="slide.js?v=19"></script>
+<script src="matpom.js?v=23"></script>
 <script src="artikel.js?v=21"></script>
 <script src="foto.js?v=18"></script>
 <script>
@@ -334,6 +335,12 @@ function api(a, extra) {
   Object.keys(extra || {}).forEach(function (k) { u.searchParams.set(k, extra[k]); });
   return fetchT(u.toString(), { redirect: 'follow' }, 45000).then(readJson).then(chk);
 }
+if (window.MP) MP.setup({ api: api, post: post, toast: toast,
+  role: function () { return App.admin ? 'admin' : App.ho ? 'ho' : 'site'; },
+  me: function () { return App.site || {}; },
+  camps: function () { return (App.data && App.data.matpom) || []; },
+  go: function (v) { go(v); },
+  openMonitor: function (cid) { MP.openCamp(cid); go('monitor'); } });
 if (window.SlideView) SlideView.fetch = function (ids) { return api('img', { ids: ids.join(',') }).then(function (r) { return r.imgs || {}; }); };
 function post(body) {
   return fetchT(CFG.API, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -483,13 +490,13 @@ function liveSites() { return (App.online || []).filter(function (o) { return o.
 /* --------------------------------------------------------- navigasi - */
 var NAV = [['home', 'Beranda', 'home'], ['kalender', 'Kalender', 'cal'], ['jalan', 'Hari ini', 'zap'], ['info', 'Info', 'info'], ['artikel', 'Check artikel', 'sheet']];
 var SNAV = [['home', 'Beranda', 'home'], ['jalan', 'Promo hari ini', 'zap'], ['kalender', 'Kalender', 'cal'], ['semua', 'Semua promo', 'list'],
-            ['memo', 'Memo & update', 'memo'], ['materi', 'Materi promo', 'folder'], ['info', 'Info tambahan', 'info'], ['artikel', 'Check artikel promo', 'sheet'], ['cek', 'Cek stok promo', 'search']];
+            ['memo', 'Memo & update', 'memo'], ['materi', 'Materi promo', 'folder'], ['monitor', 'Monitoring materi', 'chart'], ['info', 'Info tambahan', 'info'], ['artikel', 'Check artikel promo', 'sheet'], ['cek', 'Cek stok promo', 'search']];
 function go(v, extra) {
   App.view = v; if (extra) Object.assign(App, extra);
   var h = '#' + v; if (location.hash !== h) history.pushState(null, '', h);
   render(); window.scrollTo(0, 0);
 }
-function readHash() { var v = (location.hash || '').slice(1); if (['home', 'jalan', 'kalender', 'semua', 'memo', 'materi', 'info', 'artikel', 'cek', 'akun'].indexOf(v) >= 0) App.view = v; }
+function readHash() { var v = (location.hash || '').slice(1); if (['home', 'jalan', 'kalender', 'semua', 'memo', 'materi', 'monitor', 'info', 'artikel', 'cek', 'akun'].indexOf(v) >= 0) App.view = v; }
 window.addEventListener('popstate', function () { closeDrawer(); readHash(); if (App.data) render(); });
 
 function renderChrome() {
@@ -508,7 +515,7 @@ function renderChrome() {
     : App.admin
     ? 'Masuk sebagai<b><span class="admtag">ADMIN</span>' + esc(App.site.name) + '</b><a class="btn sm block" href="admin.html" style="display:block;text-align:center;text-decoration:none;margin-top:10px">Buka halaman admin</a><button class="btn sm block" id="sOut">Keluar</button>'
     : 'Masuk sebagai<b>' + esc(App.site.code) + (App.site.name ? ' · ' + esc(App.site.name) : '') + '</b><button class="btn sm block" id="sOut">Keluar</button>';
-  var TT = { home: 'Beranda', jalan: 'Promo hari ini', kalender: 'Kalender promo', semua: 'Semua promo', memo: 'Memo & update', materi: 'Materi promo', info: 'Info tambahan', artikel: 'Check artikel promo', cek: 'Cek stok promo', akun: 'Siapa online' };
+  var TT = { home: 'Beranda', jalan: 'Promo hari ini', kalender: 'Kalender promo', semua: 'Semua promo', memo: 'Memo & update', materi: 'Materi promo', monitor: 'Monitoring materi', info: 'Info tambahan', artikel: 'Check artikel promo', cek: 'Cek stok promo', akun: 'Siapa online' };
   $('#tbTitle').innerHTML = esc(TT[App.view] || 'Beranda') + '<small>' + (App.ho ? 'HO · ' + esc(App.site.name || '') : App.admin ? 'ADMIN · ' + esc(App.site.name || '') : esc(App.site.code + ' · ' + (App.site.name || ''))) + (App.month ? ' · Juknis ' + fmtMonth(App.month) : '') + '</small>';
   var onl = live + liveHO().length + (App.online || []).filter(function (o) { return o.kind === 'admin' && o.ago < 180 && !(App.admin && o.name === App.site.name); }).length;
   $('#tbOnline').innerHTML = '<span class="dot"></span>' + onl + ' online';
@@ -520,8 +527,8 @@ function render() {
   if (!App.data) return;
   document.title = CFG.BRAND || 'Promo Eigerindo';
   renderChrome();
-  var fn = { home: vHome, jalan: vJalan, kalender: vKalender, semua: vSemua, memo: vMemo, materi: vMateri, info: vInfo, artikel: vArtikel, cek: vCek, akun: vAkun }[App.view] || vHome;
-  $('#view').innerHTML = fn() + slideFoot({ home: 'RINGKASAN', jalan: 'PROMO HARI INI', kalender: 'KALENDER PROMO', semua: 'SEMUA PROMO', memo: 'MEMO & UPDATE', materi: 'MATERI PROMO', info: 'INFO TAMBAHAN', artikel: 'CHECK ARTIKEL PROMO', cek: 'CEK STOK PROMO', akun: 'TOKO ONLINE' }[App.view] || '');
+  var fn = { home: vHome, jalan: vJalan, kalender: vKalender, semua: vSemua, memo: vMemo, materi: vMateri, monitor: vMonitor, info: vInfo, artikel: vArtikel, cek: vCek, akun: vAkun }[App.view] || vHome;
+  $('#view').innerHTML = fn() + slideFoot({ home: 'RINGKASAN', jalan: 'PROMO HARI INI', kalender: 'KALENDER PROMO', semua: 'SEMUA PROMO', memo: 'MEMO & UPDATE', materi: 'MATERI PROMO', monitor: 'MONITORING PEMASANGAN MATERI', info: 'INFO TAMBAHAN', artikel: 'CHECK ARTIKEL PROMO', cek: 'CEK STOK PROMO', akun: 'TOKO ONLINE' }[App.view] || '');
 }
 function slideFoot(sec) {
   return '<footer class="pfoot"><span>EIGER ADVENTURE &nbsp;|&nbsp; JUKNIS PROMO ' + esc(fmtMonth(App.month).toUpperCase()) + (sec ? ' &nbsp;|&nbsp; ' + esc(sec) : '') + '</span><img src="img/logo-white.png" alt="Eigerindo MPI"></footer>';
@@ -562,7 +569,7 @@ function vHome() {
     + '<div class="who"><span>' + (App.ho ? '<span class="admtag ho">HO</span><b>' + esc(App.site.name) + '</b>' : App.admin ? '<span class="admtag">ADMIN</span><b>' + esc(App.site.name) + '</b>' : 'Toko <b>' + esc(App.site.code) + (App.site.name ? ' · ' + esc(App.site.name) : '') + '</b>') + '</span>' + adminOnlineTxt() + '<span>' + fmtDate(App.today) + '</span><span class="chip live" style="background:rgba(255,255,255,.12);color:#fff">' + live + ' toko' + (liveHO().length ? ' · ' + liveHO().length + ' HO' : '') + ' online</span></div></section>'
     + '<div class="qgrid">' + tiles.map(function (t, i) {
         return '<button class="ic" data-tile="' + i + '" style="--c:' + t[3] + ';--t:' + t[4] + '"><span class="i">' + svg(t[2]) + '</span><span>' + t[1] + '</span>' + (t[5] ? '<span class="bd">' + t[5] + '</span>' : '') + '</button>';
-      }).join('') + '</div>';
+      }).join('') + '</div>' + '<div data-mpban></div>';
   if (B.catatan) h += '<section class="panel" style="border-left:6px solid var(--orange)"><div class="ph"><h2>Catatan admin</h2></div><p style="margin:0;font-size:13.5px">' + esc(B.catatan) + '</p></section>';
   h += ringkasan(list, per);
   var INF = (B.info || []);
@@ -683,11 +690,17 @@ function vMateri() {
     h += '<section class="panel"><div class="empty">Link materi untuk ' + fmtMonth(m) + ' belum diisi admin.</div></section>';
   }
   if (B.fileJuknis) h += '<section class="panel"><div class="xl"><a class="xb" href="' + esc(B.fileJuknis) + '" target="_blank" rel="noopener"><span class="x" style="background:var(--bad-bg);color:var(--bad)">' + svg('file') + '</span><span><b>File juknis ' + fmtMonth(m) + '</b><small>' + esc(B.title || 'PDF / PPT juknis') + '</small></span><span class="go">' + svg('ext') + '</span></a></div></section>';
+  var MPC = (App.data.matpom || []).filter(function (c) { return c.aktif; });
+  if (!App.admin && !App.ho) h += '<div data-mpstore></div>';
+  else if ((App.data.matpom || []).length) h += '<section class="panel"><div class="ph"><h2>Pemasangan materi</h2></div><p class="small" style="margin:0 0 10px">' + MPC.length + ' monitoring aktif. Lihat persentase pemasangan per toko, branch dan regional.</p><button class="btn primary" data-go="monitor">' + svg('chart') + ' Buka monitoring</button></section>';
   var oth = L.filter(function (x) { return !cur || x.key !== cur.key; });
   if (oth.length) h += '<section class="panel"><div class="ph"><h2>Link materi lainnya</h2></div><div class="xl">' + oth.map(function (x) {
     return '<a class="xb" href="' + esc(x.url) + '" target="_blank" rel="noopener"><span class="x" style="background:#FEF3E2;color:#B45309">' + svg('folder') + '</span><span><b>' + esc(mLabel(x.key)) + (x.label ? ' · ' + esc(x.label) : '') + '</b><small>' + esc(x.note || driveKind(x.url)) + '</small></span><span class="go">' + svg('ext') + '</span></a>';
   }).join('') + '</div></section>';
   return h + '</section>';
+}
+function vMonitor() {
+  return '<section class="sheet">' + head('Monitoring materi', 'Persentase pemasangan materi promo per toko, branch & regional') + '<section class="panel mp-p0"><div data-mpmon></div></section></section>';
 }
 function vInfo() {
   var B = App.data.bulan[App.month] || {}, INF = B.info || [], XN = { tier: 'Detail tiering', eksekusi: 'Teknis eksekusi', steps: 'Alur langkah' };
