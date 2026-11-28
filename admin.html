@@ -62,7 +62,7 @@ textarea.inp{min-height:80px;resize:vertical}
 .btn.warnb{color:var(--orange-2);border-color:#F3C3A8}
 .btn.warnb:hover{background:var(--orange-tint);border-color:var(--orange)}
 </style>
-<link rel="stylesheet" href="ppt.css?v=20">
+<link rel="stylesheet" href="ppt.css?v=21">
 </head>
 <body class="locked">
 
@@ -78,7 +78,7 @@ textarea.inp{min-height:80px;resize:vertical}
     <div class="err" id="aErr"></div>
     <button type="button" class="btn sm" id="aTest" style="margin-top:4px">Tes koneksi server</button>
     <div class="small muted" id="aTestOut" style="margin-top:8px;line-height:1.5"></div>
-    <div class="small muted" style="margin-top:10px">Versi halaman: 20</div>
+    <div class="small muted" style="margin-top:10px">Versi halaman: 21</div>
   </form>
 </div>
 
@@ -103,7 +103,7 @@ textarea.inp{min-height:80px;resize:vertical}
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script src="config.js"></script>
-<script src="icons.js?v=18"></script>
+<script src="icons.js?v=21"></script>
 <script src="parse.js?v=19"></script>
 <script src="slide.js?v=19"></script>
 <script src="artikel.js?v=21"></script>
@@ -235,10 +235,11 @@ function boot() {
 
 /* ----------------------------------------------------------- render */
 var ANAV = [['home', 'Beranda', 'home'], ['promo', 'Promo', 'list'], ['terbit', 'Unggah', 'upload'], ['toko', 'Toko', 'store'], ['aktif', 'Aktivitas', 'history']];
-var ASNAV = [['home', 'Beranda', 'home'], ['terbit', 'Unggah juknis', 'upload', 'cta'], ['promo', 'Promo tersimpan', 'list'], ['artikel', 'List artikel promo', 'sheet'], ['foto', 'Foto produk', 'image'], ['toko', 'Daftar toko', 'store'], ['aktif', 'Toko & HO online', 'users']];
+var ASNAV = [['home', 'Beranda', 'home'], ['terbit', 'Unggah juknis', 'upload', 'cta'], ['promo', 'Promo tersimpan', 'list'], ['artikel', 'List artikel promo', 'sheet'], ['foto', 'Foto produk', 'image'], ['materi', 'Materi promo', 'folder'], ['toko', 'Daftar toko', 'store'], ['aktif', 'Toko & HO online', 'users']];
 var TITLES = { terbit: ['Unggah & terbitkan', 'Baca juknis, koreksi, lalu terbitkan ke seluruh toko'], promo: ['Promo tersimpan', 'Versi yang sedang dilihat toko'],
   artikel: ['List artikel promo', 'Excel list artikel per bulan, dipakai toko untuk cek stok promo'],
   foto: ['Foto produk', 'File link foto per artikel & warna, tampil di cek stok toko'],
+  materi: ['Materi promo', 'Link folder materi (KV, desain, video) yang dibuka toko'],
   toko: ['Daftar toko', 'Hanya No Site di sini yang bisa masuk'], aktif: ['Toko & HO online', 'Siapa yang sedang membuka halaman promo'] };
 function goA(v) { A.tab = v; var h = '#' + v; if (location.hash !== h) history.pushState(null, '', h); closeOv(); render(); window.scrollTo(0, 0); }
 window.addEventListener('popstate', function () { var v = (location.hash || '').slice(1); if (TITLES[v] || v === 'home') { A.tab = v; closeOv(); if (A.data) render(); } });
@@ -266,13 +267,13 @@ function render() {
   var v = $('#view');
   if (A.tab === 'home' || !TITLES[A.tab]) { A.tab = 'home'; v.innerHTML = viewHome(); return; }
   var T = TITLES[A.tab];
-  var body = A.tab === 'terbit' ? viewTerbit() : A.tab === 'promo' ? viewPromo() : A.tab === 'artikel' ? viewArtA() : A.tab === 'foto' ? viewFotoA() : A.tab === 'toko' ? viewToko() : viewAktif();
+  var body = A.tab === 'terbit' ? viewTerbit() : A.tab === 'promo' ? viewPromo() : A.tab === 'artikel' ? viewArtA() : A.tab === 'foto' ? viewFotoA() : A.tab === 'materi' ? viewMateriA() : A.tab === 'toko' ? viewToko() : viewAktif();
   v.innerHTML = '<section class="sheet"><div class="pagehead" style="margin:0"><button class="back" data-go="home" aria-label="Kembali">' + svg('back') + '</button>'
     + '<div><h1>' + T[0] + '</h1><p>' + T[1] + '</p></div></div></section>' + body;
   if (A.tab === 'aktif') loadLog();
 }
 var ATILES = [['terbit', 'Unggah juknis', 'upload', '#E46F3F', '#FDF0EA'], ['promo', 'Promo tersimpan', 'list', '#0F3192', '#EEF2FB'],
-  ['toko', 'Daftar toko', 'store', '#107C41', '#E7F4EC'], ['tpl', 'Template toko', 'download', '#7A4FB5', '#F1EBFA'],
+  ['toko', 'Daftar toko', 'store', '#107C41', '#E7F4EC'], ['materi', 'Materi promo', 'folder', '#B45309', '#FEF3E2'],
   ['aktif', 'Toko & HO online', 'users', '#1B47C2', '#E6EDFC'], ['foto', 'Foto produk', 'image', '#D81B60', '#FCE4EC'],
   ['site', 'Halaman toko', 'ext', '#13806F', '#E3F4F0'], ['artikel', 'List artikel', 'sheet', '#C9531F', '#FDF0EA']];
 function viewHome() {
@@ -521,6 +522,57 @@ function filterSites() {
 }
 
 /* ------------------------------------------------------- tab: aktivitas */
+/* ------------------------------------------------ materi promo */
+function mLabelA(k) { return /^\d{4}$/.test(k) ? 'Tahun ' + k + ' (Jan – Des)' : fmtMonth(k); }
+function viewMateriA() {
+  var L = A.data.materi || [], E = A.matEdit || null, now = new Date(), nm = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  var defM = nm.getFullYear() + '-' + ('0' + (nm.getMonth() + 1)).slice(-2), yr = E ? /^\d{4}$/.test(E.key) : false;
+  var h = '<div class="card"><h2>' + (E ? 'Ubah link ' + esc(mLabelA(E.key)) : 'Tambah link materi') + '</h2>'
+    + '<p class="lead">Toko membuka menu <b>Materi promo</b> dan otomatis melihat link untuk bulan yang dipilih. Kalau bulan itu tidak punya link sendiri, yang dipakai link <b>setahun</b>. Contoh: isi satu link "Tahun 2027" untuk seluruh 2027.</p>'
+    + '<div class="seg" id="matSeg"><button type="button" data-mper="m" class="' + (yr ? '' : 'on') + '">Per bulan</button><button type="button" data-mper="y" class="' + (yr ? 'on' : '') + '">Setahun</button></div>'
+    + '<div class="grid2" style="margin-top:12px">'
+    + '<label class="fl" id="matMw"' + (yr ? ' hidden' : '') + '>Bulan<input class="inp" type="month" id="matM" value="' + esc(E && !yr ? E.key : defM) + '"></label>'
+    + '<label class="fl" id="matYw"' + (yr ? '' : ' hidden') + '>Tahun<input class="inp" type="number" min="2024" max="2100" id="matY" value="' + esc(E && yr ? E.key : String(now.getFullYear() + (now.getMonth() >= 9 ? 1 : 0))) + '"></label>'
+    + '<label class="fl">Judul (opsional)<input class="inp" id="matL" maxlength="120" placeholder="mis. Materi Promo Desember 2026" value="' + esc(E ? E.label : '') + '"></label></div>'
+    + '<label class="fl">Link folder / file<input class="inp" id="matU" type="url" inputmode="url" placeholder="https://drive.google.com/drive/folders/…" value="' + esc(E ? E.url : '') + '"></label>'
+    + '<label class="fl">Catatan untuk toko (opsional)<input class="inp" id="matN" maxlength="400" placeholder="mis. Cetak KV ukuran A3, pasang paling lambat H-1" value="' + esc(E ? E.note : '') + '"></label>'
+    + '<p class="small muted" style="margin:6px 0 0">Pastikan akses folder Drive diatur "Siapa saja di Eigerindo yang memiliki link" atau "Siapa saja yang memiliki link", supaya toko bisa membuka.</p>'
+    + '<div class="row" style="margin-top:12px;gap:8px;display:flex;flex-wrap:wrap"><button class="btn primary" data-act="matSave">' + (E ? 'Simpan perubahan' : 'Simpan link') + '</button>' + (E ? '<button class="btn" data-act="matCancel">Batal</button>' : '') + '</div></div>';
+  h += '<div class="card"><h2>Link tersimpan</h2>' + (L.length ? '<div class="olist">' + L.map(function (x) {
+    return '<div class="r"><span class="av" style="background:#FEF3E2;color:#B45309">' + (/^\d{4}$/.test(x.key) ? x.key.slice(2) : MON[+x.key.slice(5) - 1]) + '</span>'
+      + '<span><b>' + esc(mLabelA(x.key)) + (x.label ? ' · ' + esc(x.label) : '') + '</b><small><a href="' + esc(x.url) + '" target="_blank" rel="noopener">' + esc(x.url.length > 60 ? x.url.slice(0, 57) + '…' : x.url) + '</a>' + (x.note ? ' · ' + esc(x.note) : '') + '</small></span>'
+      + '<span class="t" style="display:flex;gap:6px"><button class="btn sm" data-matedit="' + esc(x.key) + '">Ubah</button><button class="btn sm warnb" data-matdel="' + esc(x.key) + '">Hapus</button></span></div>';
+  }).join('') + '</div>' : '<div class="empty">Belum ada link materi.</div>') + '</div>';
+  return h;
+}
+document.addEventListener('click', async function (e) {
+  var t = e.target.closest && e.target.closest('[data-mper],[data-act=matSave],[data-act=matCancel],[data-matedit],[data-matdel]'); if (!t) return;
+  e.stopPropagation();
+  if (t.dataset.mper) {
+    var y = t.dataset.mper === 'y';
+    document.querySelectorAll('#matSeg button').forEach(function (b) { b.classList.toggle('on', b === t); });
+    $('#matMw').hidden = y; $('#matYw').hidden = !y; return;
+  }
+  if (t.dataset.act === 'matCancel') { A.matEdit = null; render(); return; }
+  if (t.dataset.matedit) { A.matEdit = (A.data.materi || []).filter(function (x) { return x.key === t.dataset.matedit; })[0] || null; render(); window.scrollTo(0, 0); return; }
+  var req;
+  if (t.dataset.matdel) {
+    if (!confirm('Hapus link materi ' + mLabelA(t.dataset.matdel) + '?')) return;
+    req = { a: 'materiDel', key: t.dataset.matdel };
+  } else {
+    var yr = $('#matYw') && !$('#matYw').hidden, key = yr ? String($('#matY').value).trim() : $('#matM').value, url = $('#matU').value.trim();
+    if (yr ? !/^\d{4}$/.test(key) : !/^\d{4}-\d{2}$/.test(key)) { toast('Pilih ' + (yr ? 'tahun' : 'bulan') + ' dulu.'); return; }
+    if (!/^https:\/\/\S+$/i.test(url)) { toast('Link harus diawali https://'); $('#matU').focus(); return; }
+    var ada = (A.data.materi || []).filter(function (x) { return x.key === key && (!A.matEdit || A.matEdit.key !== key); })[0];
+    if (ada && !confirm(mLabelA(key) + ' sudah punya link. Ganti dengan link ini?')) return;
+    req = { a: 'materiSave', key: key, old: A.matEdit ? A.matEdit.key : '', url: url, label: $('#matL').value.trim(), note: $('#matN').value.trim() };
+  }
+  t.disabled = true;
+  try {
+    var r = await post(req); A.data.materi = r.materi || []; A.matEdit = null; render();
+    toast(req.a === 'materiDel' ? 'Link dihapus.' : 'Link materi tersimpan. Toko langsung bisa membuka.');
+  } catch (er) { t.disabled = false; toast('Gagal: ' + (er.message || er.code), 6000); }
+}, true);
 function viewAktif() {
   var live = A.online.filter(function (o) { return o.ago < 180; });
   var recent = A.online.filter(function (o) { return o.ago >= 180; });
