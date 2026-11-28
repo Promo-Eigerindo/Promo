@@ -62,7 +62,7 @@ textarea.inp{min-height:80px;resize:vertical}
 .btn.warnb{color:var(--orange-2);border-color:#F3C3A8}
 .btn.warnb:hover{background:var(--orange-tint);border-color:var(--orange)}
 </style>
-<link rel="stylesheet" href="ppt.css?v=21">
+<link rel="stylesheet" href="ppt.css?v=23">
 </head>
 <body class="locked">
 
@@ -78,7 +78,7 @@ textarea.inp{min-height:80px;resize:vertical}
     <div class="err" id="aErr"></div>
     <button type="button" class="btn sm" id="aTest" style="margin-top:4px">Tes koneksi server</button>
     <div class="small muted" id="aTestOut" style="margin-top:8px;line-height:1.5"></div>
-    <div class="small muted" style="margin-top:10px">Versi halaman: 21</div>
+    <div class="small muted" style="margin-top:10px">Versi halaman: 23</div>
   </form>
 </div>
 
@@ -103,9 +103,10 @@ textarea.inp{min-height:80px;resize:vertical}
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script src="config.js"></script>
-<script src="icons.js?v=21"></script>
+<script src="icons.js?v=22"></script>
 <script src="parse.js?v=19"></script>
 <script src="slide.js?v=19"></script>
+<script src="matpom.js?v=23"></script>
 <script src="artikel.js?v=21"></script>
 <script src="foto.js?v=18"></script>
 <script>
@@ -178,6 +179,8 @@ function post(body) {
     .then(function (j) { if (j && j.error) throw Object.assign(new Error(j.message || j.error), { code: j.error }); return j; });
 }
 
+if (window.MP) MP.setup({ api: api, post: post, toast: toast, role: function () { return 'admin'; }, me: function () { return { code: 'ADMIN', name: (A.me && A.me.name) || 'Admin' }; },
+  camps: function () { return (A.data && A.data.matpom) || []; }, go: function () {}, openMonitor: function (cid) { MP.openCamp(cid); goA('matpom'); } });
 if (window.SlideView) SlideView.fetch = function (ids) { return api('img', { ids: ids.join(',') }).then(function (r) { return r.imgs || {}; }); };
 /* gambar slide (data URL) → unggah ke sheet Gambar, lalu diganti id */
 function hashStr(t) { var h1 = 0x811c9dc5, h2 = 0; for (var i = 0; i < t.length; i++) { var c = t.charCodeAt(i); h1 = Math.imul(h1 ^ c, 16777619) >>> 0; h2 = (h2 * 31 + c) >>> 0; } return 'g' + h1.toString(36) + h2.toString(36) + t.length.toString(36); }
@@ -235,11 +238,12 @@ function boot() {
 
 /* ----------------------------------------------------------- render */
 var ANAV = [['home', 'Beranda', 'home'], ['promo', 'Promo', 'list'], ['terbit', 'Unggah', 'upload'], ['toko', 'Toko', 'store'], ['aktif', 'Aktivitas', 'history']];
-var ASNAV = [['home', 'Beranda', 'home'], ['terbit', 'Unggah juknis', 'upload', 'cta'], ['promo', 'Promo tersimpan', 'list'], ['artikel', 'List artikel promo', 'sheet'], ['foto', 'Foto produk', 'image'], ['materi', 'Materi promo', 'folder'], ['toko', 'Daftar toko', 'store'], ['aktif', 'Toko & HO online', 'users']];
+var ASNAV = [['home', 'Beranda', 'home'], ['terbit', 'Unggah juknis', 'upload', 'cta'], ['promo', 'Promo tersimpan', 'list'], ['artikel', 'List artikel promo', 'sheet'], ['foto', 'Foto produk', 'image'], ['materi', 'Materi promo', 'folder'], ['matpom', 'Monitoring materi', 'chart'], ['toko', 'Daftar toko', 'store'], ['aktif', 'Toko & HO online', 'users']];
 var TITLES = { terbit: ['Unggah & terbitkan', 'Baca juknis, koreksi, lalu terbitkan ke seluruh toko'], promo: ['Promo tersimpan', 'Versi yang sedang dilihat toko'],
   artikel: ['List artikel promo', 'Excel list artikel per bulan, dipakai toko untuk cek stok promo'],
   foto: ['Foto produk', 'File link foto per artikel & warna, tampil di cek stok toko'],
   materi: ['Materi promo', 'Link folder materi (KV, desain, video) yang dibuka toko'],
+  matpom: ['Monitoring pemasangan materi', 'Toko lapor foto pemasangan, HO & admin pantau % per toko, branch, regional'],
   toko: ['Daftar toko', 'Hanya No Site di sini yang bisa masuk'], aktif: ['Toko & HO online', 'Siapa yang sedang membuka halaman promo'] };
 function goA(v) { A.tab = v; var h = '#' + v; if (location.hash !== h) history.pushState(null, '', h); closeOv(); render(); window.scrollTo(0, 0); }
 window.addEventListener('popstate', function () { var v = (location.hash || '').slice(1); if (TITLES[v] || v === 'home') { A.tab = v; closeOv(); if (A.data) render(); } });
@@ -267,7 +271,7 @@ function render() {
   var v = $('#view');
   if (A.tab === 'home' || !TITLES[A.tab]) { A.tab = 'home'; v.innerHTML = viewHome(); return; }
   var T = TITLES[A.tab];
-  var body = A.tab === 'terbit' ? viewTerbit() : A.tab === 'promo' ? viewPromo() : A.tab === 'artikel' ? viewArtA() : A.tab === 'foto' ? viewFotoA() : A.tab === 'materi' ? viewMateriA() : A.tab === 'toko' ? viewToko() : viewAktif();
+  var body = A.tab === 'terbit' ? viewTerbit() : A.tab === 'promo' ? viewPromo() : A.tab === 'artikel' ? viewArtA() : A.tab === 'foto' ? viewFotoA() : A.tab === 'materi' ? viewMateriA() : A.tab === 'matpom' ? viewMatpomA() : A.tab === 'toko' ? viewToko() : viewAktif();
   v.innerHTML = '<section class="sheet"><div class="pagehead" style="margin:0"><button class="back" data-go="home" aria-label="Kembali">' + svg('back') + '</button>'
     + '<div><h1>' + T[0] + '</h1><p>' + T[1] + '</p></div></div></section>' + body;
   if (A.tab === 'aktif') loadLog();
@@ -275,7 +279,7 @@ function render() {
 var ATILES = [['terbit', 'Unggah juknis', 'upload', '#E46F3F', '#FDF0EA'], ['promo', 'Promo tersimpan', 'list', '#0F3192', '#EEF2FB'],
   ['toko', 'Daftar toko', 'store', '#107C41', '#E7F4EC'], ['materi', 'Materi promo', 'folder', '#B45309', '#FEF3E2'],
   ['aktif', 'Toko & HO online', 'users', '#1B47C2', '#E6EDFC'], ['foto', 'Foto produk', 'image', '#D81B60', '#FCE4EC'],
-  ['site', 'Halaman toko', 'ext', '#13806F', '#E3F4F0'], ['artikel', 'List artikel', 'sheet', '#C9531F', '#FDF0EA']];
+  ['matpom', 'Monitoring materi', 'chart', '#13806F', '#E3F4F0'], ['artikel', 'List artikel', 'sheet', '#C9531F', '#FDF0EA']];
 function viewHome() {
   var ms = A.data.months, last = ms[ms.length - 1], live = liveA();
   var lp = last ? A.data.promos.filter(function (p) { return p.month === last; }).length : 0;
@@ -389,17 +393,17 @@ function viewPromo() {
 function normH(v) { return String(v == null ? '' : v).toLowerCase().replace(/[^a-z0-9]/g, ''); }
 /* membaca tabel (array of array) → daftar toko. Kolom dicari dari nama judulnya, urutan bebas. */
 function mapSiteRows(aoa) {
-  var want = { code: ['site', 'nosite', 'kodesite', 'sitecode', 'kodetoko', 'kode'],
+  var want = { code: ['site', 'siteid', 'nosite', 'kodesite', 'sitecode', 'kodetoko', 'kode'],
                name: ['namastore', 'namatoko', 'storename', 'sitename', 'nama'],
-               branch: ['branch', 'area', 'cabang'], regional: ['regional', 'region', 'reg'] };
+               branch: ['branch', 'area', 'cabang', 'district'], regional: ['regional', 'region', 'reg'] };
   var hi = -1, C = {}, i, j;
-  for (i = 0; i < Math.min(aoa.length, 20); i++) {
+  for (i = 0; i < Math.min(aoa.length, 80); i++) {
     var h = (aoa[i] || []).map(normH), c = {};
     Object.keys(want).forEach(function (k) { for (j = 0; j < h.length; j++) if (want[k].indexOf(h[j]) >= 0) { c[k] = j; break; } });
     if (c.code != null && c.name != null) { hi = i; C = c; break; }
   }
   if (hi < 0) return null;
-  var rows = [], bad = 0, dup = 0, seen = {};
+  var rows = [], bad = 0, dup = 0, seen = {}, skipOwn = 0;
   var tx = function (v) { return String(v == null ? '' : v).replace(/\s+/g, ' ').trim(); };
   for (i = hi + 1; i < aoa.length; i++) {
     var r = aoa[i] || [], raw = r[C.code];
@@ -408,9 +412,11 @@ function mapSiteRows(aoa) {
     if (!/^[0-9A-Za-z]{3,8}$/.test(code)) { bad++; continue; }
     if (seen[code]) { dup++; continue; }
     seen[code] = 1;
-    rows.push({ code: code, name: tx(r[C.name]), branch: C.branch != null ? tx(r[C.branch]) : '', regional: C.regional != null ? tx(r[C.regional]) : '' });
+    if (/own\s*platform|e-?commerce/i.test(tx(r[C.regional]) + ' ' + tx(r[C.branch]))) { skipOwn = (skipOwn || 0) + 1; continue; }   // e-commerce, bukan toko fisik
+    var tutup = r.some(function (x) { return /^\s*(close|closed|tutup)\s*$/i.test(String(x)); });   // baris bertanda close/tutup → toko nonaktif
+    rows.push({ code: code, name: tx(r[C.name]), branch: C.branch != null ? tx(r[C.branch]) : '', regional: C.regional != null ? tx(r[C.regional]).replace(/^REQ\s*(\d+)$/i, 'REG $1') : '', tutup: tutup });
   }
-  return { rows: rows, bad: bad, dup: dup };
+  return { rows: rows, bad: bad, dup: dup, own: skipOwn || 0 };
 }
 var _xl = null;
 function needXLSX() {
@@ -425,12 +431,12 @@ async function readSiteFile(f) {
   try {
     if (!(await needXLSX())) throw new Error('Pembaca Excel gagal dimuat. Cek koneksi internet.');
     var wb = window.XLSX.read(await f.arrayBuffer(), { type: 'array' }), res = null, sheet = '';
-    for (var i = 0; i < wb.SheetNames.length && !res; i++) {
+    for (var i = 0; i < wb.SheetNames.length; i++) {                // pilih sheet dengan daftar toko terbanyak
       var aoa = window.XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[i]], { header: 1, raw: true, defval: '', blankrows: false });
-      var m = mapSiteRows(aoa); if (m && m.rows.length) { res = m; sheet = wb.SheetNames[i]; }
+      var m = mapSiteRows(aoa); if (m && m.rows.length && (!res || m.rows.length > res.rows.length)) { res = m; sheet = wb.SheetNames[i]; }
     }
     if (!res) throw new Error('Kolom SITE dan NAMA STORE tidak ditemukan. Gunakan template yang disediakan.');
-    A.siteImp = { file: f.name, sheet: sheet, rows: res.rows, bad: res.bad, dup: res.dup };
+    A.siteImp = { file: f.name, sheet: sheet, rows: res.rows, bad: res.bad, dup: res.dup, own: res.own };
     render();
   } catch (e) { if (st) st.innerHTML = '<span style="color:var(--bad)">' + esc(e.message || String(e)) + '</span>'; }
 }
@@ -480,6 +486,7 @@ function viewToko() {
       + '<div class="g2" style="margin-bottom:6px"><div class="fs" style="margin:0"><h4>' + I.rows.length + ' toko terbaca</h4>'
         + '<div class="small">' + nw + ' toko baru · ' + (I.rows.length - nw) + ' sudah terdaftar</div>'
         + (I.dup ? '<div class="small" style="color:var(--orange-deep)">' + I.dup + ' baris kembar dilewati</div>' : '')
+        + (I.own ? '<div class="small muted">' + I.own + ' baris OWNPLATFORM / e-commerce dilewati (bukan toko fisik)</div>' : '')
         + (I.bad ? '<div class="small" style="color:var(--bad)">' + I.bad + ' baris tidak valid dilewati (No Site kosong atau bukan 3–8 huruf/angka)</div>' : '') + '</div>'
         + '<div class="fs" style="margin:0"><h4>Per regional</h4><div class="small">'
           + Object.keys(cr).sort().map(function (k) { return esc(k) + ': <b>' + cr[k] + '</b>'; }).join(' · ') + '</div>'
@@ -497,18 +504,25 @@ function viewToko() {
     + '<span class="small muted" id="siteCnt"></span></div>'
     + '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>No Site</th><th>Nama toko</th><th>Branch</th><th>Regional</th><th></th></tr></thead><tbody id="siteBody">'
     + (A.sites.map(function (s) {
-        return '<tr data-s="' + esc((s.code + ' ' + s.name + ' ' + s.area + ' ' + s.regional).toLowerCase()) + '" data-r="' + esc(s.regional) + '"><td><b>' + esc(s.code) + '</b></td><td>' + esc(s.name)
+        var off = String(s.aktif).toLowerCase() === 'tidak';
+        return '<tr class="' + (off ? 'site-off' : '') + '" data-s="' + esc((s.code + ' ' + s.name + ' ' + s.area + ' ' + s.regional).toLowerCase()) + '" data-r="' + esc(s.regional) + '"><td><b>' + esc(s.code) + '</b>' + (off ? ' <span class="chip">tutup</span>' : '') + '</td><td>' + esc(s.name) + (s.ket ? '<div class="small muted">' + esc(s.ket) + '</div>' : '')
           + '</td><td class="small">' + esc(s.area) + '</td><td class="small">' + esc(s.regional) + '</td>'
-          + '<td><button class="btn sm danger" data-sdel="' + esc(s.code) + '">Hapus</button></td></tr>';
+          + '<td style="white-space:nowrap"><button class="btn sm" data-sakt="' + esc(s.code) + '" data-on="' + (off ? 1 : 0) + '">' + (off ? 'Aktifkan' : 'Tutup') + '</button> <button class="btn sm danger" data-sdel="' + esc(s.code) + '">Hapus</button></td></tr>';
       }).join('') || '<tr><td colspan="5" class="muted" style="text-align:center;padding:22px">Belum ada toko. Unggah file Excel di atas.</td></tr>')
     + '</tbody></table></div></div>';
+  var one = '<div class="card"><h2>Tambah 1 toko baru</h2><p class="lead">Toko baru langsung bisa masuk dengan No Site-nya dan ikut dihitung di monitoring materi.</p>'
+    + '<div class="grid2"><label class="fl">No Site<input class="inp" id="s1c" inputmode="numeric" maxlength="8" placeholder="mis. 5190"></label><label class="fl">Nama toko<input class="inp" id="s1n" placeholder="EIGER Store …"></label>'
+    + '<label class="fl">Branch<input class="inp" id="s1b" list="dlBr" placeholder="mis. JATENG 01"></label><label class="fl">Regional<input class="inp" id="s1r" list="dlRg" placeholder="mis. REG 03"></label></div>'
+    + '<datalist id="dlBr">' + Object.keys(A.sites.reduce(function (m, s) { if (s.area) m[s.area] = 1; return m; }, {})).sort().map(function (x) { return '<option value="' + esc(x) + '">'; }).join('') + '</datalist>'
+    + '<datalist id="dlRg">' + Object.keys(A.sites.reduce(function (m, s) { if (s.regional) m[s.regional] = 1; return m; }, {})).sort().map(function (x) { return '<option value="' + esc(x) + '">'; }).join('') + '</datalist>'
+    + '<div class="row-act" style="margin-top:10px"><button class="btn primary" data-act="siteOne">Tambah toko</button></div></div>';
   var paste = '<details class="card"><summary style="cursor:pointer;font-weight:700">Atau tempel manual</summary>'
     + '<p class="lead" style="margin-top:8px">Satu baris per toko: <code>NoSite;Nama Toko;Branch;Regional</code> (boleh dipisah tab atau koma, jadi bisa langsung salin dari Excel).</p>'
     + '<textarea class="inp" id="siteText" rows="5" placeholder="2054;EIGER Flagship Store Radio Dalam KYB;DKI 01;REG 01"></textarea>'
     + '<div class="row-act"><button class="btn primary" data-act="siteMerge">Tambahkan / perbarui</button><button class="btn warn" data-act="siteReplace">Ganti seluruh daftar</button></div></details>';
   return '<div class="card"><h2>Daftar No Site toko</h2>'
     + '<p class="lead">Hanya No Site di daftar ini yang bisa membuka halaman promo. Unduh template, isi, lalu unggah kembali.</p>' + drop + '</div>'
-    + prev + table + paste;
+    + prev + one + table + paste;
 }
 function filterSites() {
   var q = ($('#siteQ') || {}).value || '', r = ($('#siteReg') || {}).value || '', n = 0, tot = 0;
@@ -524,6 +538,76 @@ function filterSites() {
 /* ------------------------------------------------------- tab: aktivitas */
 /* ------------------------------------------------ materi promo */
 function mLabelA(k) { return /^\d{4}$/.test(k) ? 'Tahun ' + k + ' (Jan – Des)' : fmtMonth(k); }
+/* ------------------------------------------------ monitoring pemasangan materi */
+var MP_TPL = [['Spanduk / T-Banner', 'Offline'], ['X-Banner / Tripod', 'Offline'], ['POP A4', 'Offline'], ['Post TikTok', 'Online'], ['Post WA', 'Online'], ['Ads promo', 'Online']];
+function mpForm() {
+  var E = A.mpEdit, now = new Date(), m0 = now.getFullYear() + '-' + ('0' + (now.getMonth() + 1)).slice(-2);
+  var items = E.items && E.items.length ? E.items : MP_TPL.map(function (t) { return { label: t[0], grp: t[1] }; });
+  return '<div class="card mp-form"><h2>' + (E.id ? 'Ubah monitoring' : 'Buat monitoring baru') + '</h2>'
+    + '<p class="lead">Satu monitoring = satu promo yang materinya wajib dipasang toko. Toko melapor dari menu <b>Materi promo</b>: foto saat terpasang, atau pilih alasan bila tidak.</p>'
+    + '<div class="grid2"><label class="fl">Nama promo / materi<input class="inp" id="mpName" maxlength="100" placeholder="mis. Promo All Item 10%" value="' + esc(E.name || '') + '"></label>'
+    + '<label class="fl">Bulan<input class="inp" type="month" id="mpMonth" value="' + esc(E.month || m0) + '"></label>'
+    + '<label class="fl">Mulai pasang<input class="inp" type="date" id="mpStart" value="' + esc(E.start || '') + '"></label>'
+    + '<label class="fl">Batas lapor<input class="inp" type="date" id="mpDead" value="' + esc(E.deadline || '') + '"></label></div>'
+    + '<label class="fl">Catatan untuk toko (opsional)<input class="inp" id="mpNote" maxlength="400" placeholder="mis. Foto harus terlihat jelas, seluruh materi masuk frame" value="' + esc(E.note || '') + '"></label>'
+    + '<h4 style="margin:14px 0 2px">Materi / media yang wajib dipasang</h4>'
+    + '<p class="small muted" style="margin:0 0 8px"><b>Jenis media</b> bebas diisi (Offline, Online, Media lokal, KOL, …) dan tiap jenis jadi kolom % sendiri di rekap. <b>Wajib untuk</b> kosongkan bila semua toko; isi regional / branch / No Site (pisahkan koma) bila hanya toko tertentu, mis. <i>REG 03, JATIM 01, 2038</i>.</p>'
+    + mpLists() + '<div id="mpItems">' + items.map(mpItemRow).join('') + '</div>'
+    + '<button class="btn sm" data-mpadd>+ Tambah materi</button>'
+    + '<div class="row-act" style="margin-top:14px"><button class="btn primary" data-mpsave>' + (E.id ? 'Simpan perubahan' : 'Buat & kirim ke toko') + '</button><button class="btn" data-mpcancelf>Batal</button></div></div>';
+}
+function mpItemRow(x) {
+  return '<div class="mp-ir" data-k="' + esc(x.k || '') + '"><label class="fl">Nama materi / media<input class="inp" data-il maxlength="60" placeholder="mis. T-Banner, Billboard, Post KOL" value="' + esc(x.label || '') + '"></label>'
+    + '<label class="fl">Jenis media<input class="inp" data-ig list="dlGrp" maxlength="30" placeholder="Offline" value="' + esc(x.grp || 'Offline') + '"></label>'
+    + '<label class="fl">Wajib untuk<input class="inp" data-isc list="dlScope" maxlength="400" placeholder="Semua toko" value="' + esc(x.scope || '') + '"></label>'
+    + '<button class="btn sm danger" data-mpidel aria-label="Hapus materi">✕</button></div>';
+}
+function mpLists() {                              // saran isian: jenis media & target (regional / branch)
+  var R = {}, B = {}; A.sites.forEach(function (s) { if (s.regional) R[String(s.regional).toUpperCase().trim()] = 1; if (s.area) B[String(s.area).toUpperCase().trim()] = 1; });
+  return '<datalist id="dlGrp"><option value="Offline"><option value="Online"><option value="Media lokal"><option value="KOL"><option value="T-Banner"><option value="Event"></datalist>'
+    + '<datalist id="dlScope">' + Object.keys(R).sort().concat(Object.keys(B).sort()).map(function (x) { return '<option value="' + esc(x) + '">'; }).join('') + '</datalist>';
+}
+function viewMatpomA() {
+  var L = A.data.matpom || [], h = '';
+  if (A.mpEdit) h += mpForm();
+  else h += '<div class="card"><div class="ph" style="margin:0 0 8px"><h2>Daftar monitoring</h2><button class="btn primary sm" data-mpnew>+ Buat monitoring</button></div>'
+    + (L.length ? '<div class="olist">' + L.map(function (c) {
+        return '<div class="r"><span class="av" style="background:' + (c.aktif ? '#E3F4F0;color:#13806F' : '#F1F5F9;color:#64748B') + '">' + MON[+c.month.slice(5) - 1] + '</span>'
+          + '<span><b>' + esc(c.name) + (c.aktif ? '' : ' <span class="chip">ditutup</span>') + '</b><small>' + fmtMonth(c.month) + (c.deadline ? ' · batas lapor ' + esc(c.deadline) : '') + ' · ' + c.items.length + ' materi'
+          + (c.folder ? ' · <a href="' + esc(c.folder) + '" target="_blank" rel="noopener">folder foto</a>' : '') + '</small></span>'
+          + '<span class="t" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><button class="btn sm" data-mpopen="' + esc(c.id) + '">Rekap</button><button class="btn sm" data-mpedit="' + esc(c.id) + '">Ubah</button>'
+          + '<button class="btn sm" data-mptog="' + esc(c.id) + '">' + (c.aktif ? 'Tutup' : 'Buka lagi') + '</button><button class="btn sm danger" data-mpdel="' + esc(c.id) + '">Hapus</button></span></div>';
+      }).join('') + '</div>' : '<div class="empty">Belum ada. Klik "Buat monitoring" untuk promo pertama.</div>')
+    + '<p class="small muted" style="margin:10px 0 0">Foto disimpan di Google Drive admin (folder "Monitoring Pemasangan Materi Promo", tersusun per bulan → regional → branch), bukan di spreadsheet. Foto dikecilkan otomatis di HP toko (±150 KB), jadi tetap ringan bertahun-tahun.</p></div>';
+  if (L.length) h += '<div class="card mp-p0"><h2>Rekap pemasangan</h2><div data-mpmon></div></div>';
+  return h;
+}
+function mpReadForm() {
+  return { id: A.mpEdit.id || '', name: $('#mpName').value.trim(), month: $('#mpMonth').value, start: $('#mpStart').value, deadline: $('#mpDead').value, note: $('#mpNote').value.trim(), aktif: A.mpEdit.aktif !== false,
+    items: Array.prototype.map.call(document.querySelectorAll('#mpItems .mp-ir'), function (r) { return { k: r.dataset.k, label: r.querySelector('[data-il]').value.trim(), grp: r.querySelector('[data-ig]').value.trim() || 'Offline', scope: r.querySelector('[data-isc]').value.trim() }; }).filter(function (x) { return x.label; }) };
+}
+document.addEventListener('click', async function (e) {
+  var t = e.target.closest && e.target.closest('[data-mpnew],[data-mpadd],[data-mpidel],[data-mpsave],[data-mpcancelf],[data-mpedit],[data-mptog],[data-mpdel],[data-mpopen]'); if (!t) return;
+  var d = t.dataset, find = function (id) { return (A.data.matpom || []).filter(function (c) { return c.id === id; })[0]; };
+  if (d.mpnew != null) { A.mpEdit = {}; render(); window.scrollTo(0, 0); return; }
+  if (d.mpcancelf != null) { A.mpEdit = null; render(); return; }
+  if (d.mpadd != null) { $('#mpItems').insertAdjacentHTML('beforeend', mpItemRow({ grp: 'Offline' })); $('#mpItems').lastElementChild.querySelector('input').focus(); return; }
+  if (d.mpidel != null) { t.closest('.mp-ir').remove(); return; }
+  if (d.mpedit) { A.mpEdit = JSON.parse(JSON.stringify(find(d.mpedit) || {})); render(); window.scrollTo(0, 0); return; }
+  if (d.mpopen) { MP.openCamp(d.mpopen); var el = document.querySelector('[data-mpmon]'); if (el) { el.removeAttribute('data-mpdone'); el.innerHTML = ''; el.scrollIntoView({ behavior: 'smooth' }); } return; }
+  var req;
+  if (d.mpsave != null) {
+    var c = mpReadForm();
+    if (!c.name) { toast('Isi nama promo.'); $('#mpName').focus(); return; }
+    if (!c.items.length) { toast('Isi minimal 1 materi.'); return; }
+    if (c.deadline && c.start && c.deadline < c.start) { toast('Batas lapor lebih awal dari tanggal mulai.'); return; }
+    req = { a: 'mpSave', camp: c };
+  } else if (d.mptog) { var c2 = find(d.mptog); c2 = Object.assign({}, c2, { aktif: !c2.aktif }); req = { a: 'mpSave', camp: c2 }; }
+  else if (d.mpdel) { var c3 = find(d.mpdel); if (!confirm('Hapus monitoring "' + c3.name + '" beserta semua laporan toko?\nFoto di Google Drive tidak ikut terhapus.')) return; req = { a: 'mpDel', id: d.mpdel }; }
+  t.disabled = true;
+  try { var r = await post(req); A.data.matpom = r.matpom || []; A.mpEdit = null; MP.reset(); render(); toast(req.a === 'mpDel' ? 'Monitoring dihapus.' : 'Tersimpan. Toko langsung melihatnya di menu Materi promo.'); }
+  catch (er) { t.disabled = false; toast('Gagal: ' + (er.message || er.code), 6000); }
+});
 function viewMateriA() {
   var L = A.data.materi || [], E = A.matEdit || null, now = new Date(), nm = new Date(now.getFullYear(), now.getMonth() + 1, 1);
   var defM = nm.getFullYear() + '-' + ('0' + (nm.getMonth() + 1)).slice(-2), yr = E ? /^\d{4}$/.test(E.key) : false;
@@ -824,6 +908,12 @@ document.addEventListener('click', function (e) {
   }
   var rd = t.closest('[data-repdel]'); if (rd) { var r = t.closest('.r'); if (r) r.remove(); return; }
 
+  var sk = t.closest('[data-sakt]'); if (sk) {
+    var on = sk.dataset.on === '1';
+    if (!confirm((on ? 'Aktifkan lagi' : 'Tutup') + ' No Site ' + sk.dataset.sakt + '?' + (on ? '' : '\nToko tutup tidak bisa login dan tidak dihitung di monitoring materi.'))) return;
+    post({ a: 'siteAktif', code: sk.dataset.sakt, aktif: on }).then(function (r) { A.sites = r.sites; render(); toast(on ? 'Toko diaktifkan.' : 'Toko ditandai tutup.'); }).catch(function (er) { toast('Gagal: ' + er.message); });
+    return;
+  }
   var sd = t.closest('[data-sdel]'); if (sd) {
     if (!confirm('Hapus No Site ' + sd.dataset.sdel + ' dari daftar? Toko itu tidak bisa login lagi.')) return;
     post({ a: 'siteDel', code: sd.dataset.sdel }).then(function (r) { A.sites = r.sites; render(); toast('Dihapus.'); }).catch(function (er) { toast('Gagal: ' + er.message); });
@@ -865,6 +955,16 @@ document.addEventListener('click', function (e) {
     if (k === 'siteReplace' && !confirm('Ganti seluruh daftar toko dengan isi kotak ini?')) return;
     post({ a: 'siteSave', text: txt2, mode: k === 'siteReplace' ? 'replace' : 'merge' })
       .then(function (r) { A.sites = r.sites; render(); toast('Daftar toko tersimpan: ' + r.sites.length + ' toko.'); })
+      .catch(function (er) { toast('Gagal: ' + er.message); });
+  }
+  else if (k === 'siteOne') {
+    var c1 = $('#s1c').value.trim(), n1 = $('#s1n').value.trim(), b1 = $('#s1b').value.trim(), r1 = $('#s1r').value.trim();
+    if (!/^[0-9A-Za-z]{3,8}$/.test(c1)) { toast('No Site 3–8 huruf/angka.'); $('#s1c').focus(); return; }
+    if (!n1 || !b1 || !r1) { toast('Lengkapi nama, branch, dan regional.'); return; }
+    var ada = A.sites.filter(function (s) { return String(s.code) === c1; })[0];
+    if (ada && !confirm('No Site ' + c1 + ' sudah ada (' + ada.name + '). Perbarui datanya?')) return;
+    post({ a: 'siteSave', rows: [{ code: c1, name: n1, branch: b1, regional: r1 }], mode: 'merge' })
+      .then(function (r) { A.sites = r.sites; render(); toast('Toko ' + c1 + ' ' + (ada ? 'diperbarui' : 'ditambahkan') + '.'); })
       .catch(function (er) { toast('Gagal: ' + er.message); });
   }
   else if (k === 'tplToko') dlToko(false);
