@@ -424,3 +424,18 @@ body{font-size:14.5px}
 .slf .fn-img img[data-img],.sla .shi img[data-img]{background:linear-gradient(90deg,#EEF2F7 25%,#F8FAFC 50%,#EEF2F7 75%);background-size:200% 100%;animation:imgsh 1.2s infinite linear}
 .slf .fn-img img[data-img]{min-height:120px}
 @keyframes imgsh{to{background-position:-200% 0}}
+
+/* ---------------------------------------------------- materi promo */
+.mat-hero{display:flex;align-items:center;gap:16px;flex-wrap:wrap;border-left:5px solid #B45309}
+.mat-ic{flex:none;width:56px;height:56px;border-radius:12px;background:#FEF3E2;color:#B45309;display:grid;place-items:center}
+.mat-ic svg{width:30px;height:30px}
+.mat-t{flex:1;min-width:200px;display:flex;flex-direction:column;gap:3px}
+.mat-t small{font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#B45309}
+.mat-t b{font-size:17px;line-height:1.3;color:var(--ink,#0F172A)}
+.mat-t p{margin:2px 0 0;font-size:13.5px;color:var(--muted,#475569)}
+.mat-k{align-self:flex-start;margin-top:4px;font-size:11.5px;font-weight:700;background:#F1F5F9;color:#334155;border-radius:999px;padding:3px 9px}
+.mat-go{display:inline-flex;align-items:center;gap:8px;text-decoration:none}
+.mat-go svg{width:16px;height:16px}
+@media (max-width:600px){.mat-go{width:100%;justify-content:center}}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:600px){.grid2{grid-template-columns:1fr}}
